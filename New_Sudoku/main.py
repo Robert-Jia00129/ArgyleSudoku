@@ -6,10 +6,8 @@ from pathlib import Path
 import Sudoku
 
 
-# Read from file
-# Override
+# Remember to reset the dict in curr_line.txt if the file exist
 
-# TODO: Add condition for prefill not per_col
 
 def write_file(condition_name, arr_time):
     file_path = condition_name + "-" + time.strftime("%Y_%m_%d_%H_%M_%S")
@@ -17,7 +15,6 @@ def write_file(condition_name, arr_time):
         files = os.listdir('.')
         for f in files:
             my_zip.write(f)
-        # *** When we read the txt, could we still convert it back to an array?
         with my_zip.open(f"{condition_name}.txt", "w") as new_hello:
             new_hello.write(bytes(f'{arr_time}', 'utf-8'))
 
@@ -38,50 +35,9 @@ def to_str(bool_list) -> str:
                         "prefill-" if bool_list[4] else "no_prefill-"))
 
 
-# def previous_useless_function(is_gen_full):
-#     conditions = ""
-#     for i in range(full_iter):
-#         for ele in conditions:
-#             condition = ("classic-" if ele[0] else "argyle-",
-#                          "distinct-" if ele[1] else "PbEq-",
-#                          "percol-" if ele[2] else "inorder-",
-#                          "is_bool-" if ele[3] else "is_num-",
-#                          "prefill-" if ele[4] else "no_prefill-")
-#             curr_line[condition] = 0
-#             total_solve[condition] = 0
-#         for cond in conditions:
-#             condition = to_str(cond)
-#             if is_gen_full:
-#                 # TODO: Change file path
-#                 condition_name = ''.join(condition) + 'solve_time'
-#             else:
-#                 condition_name = ''.join(condition) + 'gen_time'
-#             print(f'Processing {condition_name}')
-#             print(ele)
-#             if condition_name not in total_solve:
-#                 total_solve[condition_name] = 0
-#             if total_solve[condition_name] > total_time_per_condition:
-#                 continue
-#             solve_time, solve_penalty, gen_time, gen_penalty \
-#                 = Sudoku.gen_solve_sudoku(*ele, log_path='DataCollection/')
-#             total_solve[condition_name] += sum(solve_time)
-#             # Record time
-#
-#             with open('../time-record/' + condition_name + 'solve_time.txt', 'a') as f:
-#                 for solve_t, solve_p in zip(solve_time, solve_penalty):
-#                     f.write(f'{solve_t},{solve_p}\n')
-#             with open('../time-record/' + condition_name + 'gen_time.txt', 'a') as f:
-#                 for gen_t, gen_p in zip(gen_time, gen_penalty):
-#                     f.write(f'{gen_t},{gen_p}\n')
-#             print(f'Appended gen and solve time for {condition_name} ')
-#             # print(condition_name + "-" + time.strftime("%Y_%m_%d_%H_%M_%S"))
-#             # write_file(condition_name, gen_solve_time)
+def to_bool(condition_str: str) -> bool:
+    pass
 
-
-# file_name = "test_file"
-# write_to_file(file_name)
-# content = read_from_file(file_name)
-# print(len(content))
 
 def run_experiment(single_condition: bool, *args,
                    full_iter: int = 0, holes_iter: int = 0, total_time_per_condition=5*60, start_condition=[],
@@ -102,11 +58,9 @@ def run_experiment(single_condition: bool, *args,
                       for distinct in (True, False)
                       for percol in (True, False)
                       for nonum in (True, False) if not (distinct and nonum)
-                      for prefill in (True, False) if not (not percol and prefill)] # TODO: Change this later
+                      for prefill in (True, False)]
         if start_condition:
             conditions = conditions[conditions.index(start_condition) + start_from_next:]
-        # for gen_solve in (True, False)]
-        # conditions = [[True,True,False,True,False]]
     if full_iter>0:
         for ele in conditions:
             exceed_time_limit = False
@@ -119,7 +73,7 @@ def run_experiment(single_condition: bool, *args,
                 hard_sudoku_path = './sudoku-logFile/argyle.txt'
 
             condition_name = to_str(ele) + 'full_time'
-            condition_progress = f'{conditions.index(ele)}/{len(conditions)}'
+            condition_progress = f'{conditions.index(ele)+1}/{len(conditions)}'
             for i in range(full_iter):
                 print(f'{i+1}th iteration: Processing full sudoku {condition_name}'
                       f'Total Progress: {condition_progress} of all conditions')
@@ -211,9 +165,8 @@ argyle_holes_path = '../store-sudoku/argyle_holes_sudokus.txt'
 #                total_time_per_condition=5 * 60 * 10000000,
 #                start_condition=[True, True, False, False, False],
 #                start_from_next=True)
-run_experiment(True, full_iter=50, holes_iter=30,
-               total_time_per_condition=5 * 60 * 10000000,
-               start_from_next=False,start_condition=[True,False,False,True,True])
+run_experiment(single_condition=False, full_iter=50, holes_iter=10,
+               total_time_per_condition=1 * 60 * 1000)
 # run_experiment(True, [False, False, True, True, True], run_full=True, run_holes=False, full_iter=1000,
 #                total_time_per_condition = 5 * 60 * 10000000)
 

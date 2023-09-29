@@ -347,8 +347,8 @@ class Sudoku:
                                 condition = self.check_condition(r, c, num)
                                 if condition == z3.sat:
                                     self.add_constaint(r,c,num)
-                                    # DIFFERENCE ****
                                     cols.remove(c)
+                                    self._nums[r][c] = num
                                     break
                                 else:
                                     if condition == z3.unknown:

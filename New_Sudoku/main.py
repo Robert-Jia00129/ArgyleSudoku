@@ -95,7 +95,7 @@ def run_experiment(single_condition: bool, *args,
                 print(f'{full_sudoku_path} {ele} exceeded time limit when generating full_grid')
     if holes_iter>0:
         for ele in conditions:
-            enough_sudoku = False
+            enough_sudoku = True
             if ele[0]:
                 full_sudoku_path = classic_full_path
                 holes_sudoku_path = classic_holes_path
@@ -115,7 +115,7 @@ def run_experiment(single_condition: bool, *args,
                     if condition_name not in total_solve:
                         total_solve[condition_name] = 0
                     if total_solve[condition_name] > total_time_per_condition:
-                        enough_sudoku = True
+                        enough_sudoku = False
                         break
                     # holes_time, holes_penalty = Sudoku.gen_holes_sudoku(eval(sudoku_lst), *ele,
                     # hard_instances_log_path='DataCollection/', store_sudoku_path='../store-sudoku/' + condition_name +
@@ -147,26 +147,27 @@ def run_experiment(single_condition: bool, *args,
     print("Process Finished")
 
 
-dct = {"curr_line_path": 'curr_line.txt',
-"classic_full_path": '../store-sudoku/classic_full_sudokus.txt',
-"argyle_full_path": '../store-sudoku/argyle_full_sudokus.txt',
-"classic_holes_path": '../store-sudoku/classic_holes_sudokus.txt',
-"argyle_holes_path": "../store-sudoku/argyle_holes_sudokus.txt"}
-# Left off with argyle-distinct-inorder-is_num-no_prefill-full_timeTotal
+if __name__ == '__main__':
+    dct = {"curr_line_path": 'curr_line.txt',
+    "classic_full_path": '../store-sudoku/classic_full_sudokus.txt',
+    "argyle_full_path": '../store-sudoku/argyle_full_sudokus.txt',
+    "classic_holes_path": '../store-sudoku/classic_holes_sudokus.txt',
+    "argyle_holes_path": "../store-sudoku/argyle_holes_sudokus.txt"}
+    # Left off with argyle-distinct-inorder-is_num-no_prefill-full_timeTotal
 
-curr_line_path = 'curr_line.txt'
-classic_full_path = '../store-sudoku/classic_full_sudokus.txt'
-argyle_full_path = '../store-sudoku/argyle_full_sudokus.txt'
-classic_holes_path = '../store-sudoku/classic_holes_sudokus.txt'
-argyle_holes_path = '../store-sudoku/argyle_holes_sudokus.txt'
+    curr_line_path = 'curr_line.txt'
+    classic_full_path = '../store-sudoku/classic_full_sudokus.txt'
+    argyle_full_path = '../store-sudoku/argyle_full_sudokus.txt'
+    classic_holes_path = '../store-sudoku/classic_holes_sudokus.txt'
+    argyle_holes_path = '../store-sudoku/argyle_holes_sudokus.txt'
 
 
-# run_experiment(False, full_iter=30, holes_iter=30,
-#                total_time_per_condition=5 * 60 * 10000000,
-#                start_condition=[True, True, False, False, False],
-#                start_from_next=True)
-run_experiment(single_condition=False, full_iter=50, holes_iter=10,
-               total_time_per_condition=1 * 60 * 1000)
-# run_experiment(True, [False, False, True, True, True], run_full=True, run_holes=False, full_iter=1000,
-#                total_time_per_condition = 5 * 60 * 10000000)
+    # run_experiment(False, full_iter=30, holes_iter=30,
+    #                total_time_per_condition=5 * 60 * 10000000,
+    #                start_condition=[True, True, False, False, False],
+    #                start_from_next=True)
+    run_experiment(single_condition=False, full_iter=20, holes_iter=20,
+                   total_time_per_condition=1 * 60 * 1000)
+    # run_experiment(True, [False, False, True, True, True], run_full=True, run_holes=False, full_iter=1000,
+    #                total_time_per_condition = 5 * 60 * 10000000)
 

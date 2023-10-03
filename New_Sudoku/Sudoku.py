@@ -35,10 +35,18 @@ class Sudoku:
         Only write a logFile when a path is provided
         Type hint for List[int] might not work
         :param sudoku_array:
-        :param classic:
-        :param distinct:
-        :param per_col:
-        :param no_num:
+        :param classic: classic or argyle sudoku
+        :param distinct: encoding constraints using z3.Distinct() or z3.PbEq()
+        :param per_col: start filling/removing the grid with number in per_col order:
+            (start with the first index (0,0) and end at index (8,8))
+            or not per_col order:
+            (start filling the grid with number order. first filling in all the 1s, 2s, 3s...
+            and end with the number 9)
+        :param no_num: Encode the numbers with numberic representation (1-9) or
+                boolean representation (val1, val2... val9): val2==True indicates the number is 2 at this index
+        :param prefill: prefill the grid:
+            per_col case: prefill the first row with 1-9 in random order
+            not per_col case: prefill all the 1s with random numbers
         :param hard_smt_logPath:
         """
         # a 1-D sudoku_array

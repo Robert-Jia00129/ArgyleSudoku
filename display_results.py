@@ -63,7 +63,7 @@ def create_table():
             # average timeout
             timeout_avg = np.average([timeout for timeout in timeouts if timeout != 0])
 
-            yield [b1, b2, b3, b4, b5, suffix == 'solve_time.txt',
+            yield [b1, b2, b3, b4, b5, suffix == 'full_time.txt',
                    average_time, num_rows, timeout_perc, timeout_avg]
     return table
 

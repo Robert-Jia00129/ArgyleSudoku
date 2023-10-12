@@ -30,7 +30,7 @@ class Sudoku:
     _prefill = False
 
     def __init__(self, sudoku_array: List[int], classic: bool, distinct: bool, per_col: bool, no_num: bool,
-                 prefill: bool, hard_smt_logPath="", hard_sudoku_logPath="",print_progress=False):
+                 prefill: bool, hard_smt_logPath="", hard_sudoku_logPath="",print_progress=False,timeout: int = 5000):
         """
         Only write a logFile when a path is provided
         Type hint for List[int] might not work
@@ -51,7 +51,7 @@ class Sudoku:
         """
         # a 1-D sudoku_array
         self._solver = z3.Solver()
-        self._timeout = 5000
+        self._timeout = timeout
         self._incTimeOut = self._timeout
         self._solver.set("timeout", self._timeout)
         # self._solver.from_file("fileName")
@@ -595,6 +595,29 @@ def gen_holes_sudoku(solved_sudoku: list[int], *constraints, hard_smt_logPath='s
     # np.save('sudoku_puzzle', solved_sudokus)
     append_list_to_file(store_sudoku_path, solved_sudoku)
     return time_rec, penalty
+
+def check_condition_index(sudoku_grid: list[int],condition,index:(int,int),try_val:int,is_sat):
+    """
+
+    :param sudoku_grid:
+    :param condition:
+    :param index:
+    :param try_val:
+    :param is_sat:
+    :return: (time,penalty)
+    """
+    s = Sudoku(sudoku_grid,*condition)
+    start = time.time()
+    penalty = 0
+    if is_sat:
+        if z3.unknown == s.check_condition(index[0],index[1],try_val):
+            penalty = 1
+
+    else:
+        if z3.unknown == s.check_not_removable(index[0],index[1],try_val):
+            penalty = 1
+    end = time.time()
+    return end-start,penalty
 
 
 if __name__ == "__main__":

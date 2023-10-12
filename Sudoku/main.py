@@ -5,6 +5,13 @@ from pathlib import Path
 
 import Sudoku
 
+FULL_CONDITIONS = [[classic, distinct, percol, nonum, prefill]
+                      for classic in (True, False)
+                      for distinct in (True, False)
+                      for percol in (True, False)
+                      for nonum in (True, False) if not (distinct and nonum)
+                      for prefill in (True, False)]
+
 
 # Remember to reset the dict in curr_line.txt if the file exist
 
@@ -147,6 +154,38 @@ def run_experiment(single_condition: bool, *args,
     print("Process Finished")
 
 
+def load_and_alternative_solve(hard_instances_file_path:str,store_file_path:str):
+    """
+    Condition[0] MUST be TRUE when classic and FALSE when argyle
+    :param file_path:
+    :return:
+    """
+    with open(store_file_path,'r') as fr:
+        time_lst = eval(fr.read())
+        if time_lst == "":
+            time_lst = [[] for i in range(len(FULL_CONDITIONS))]
+    with open(hard_instances_file_path, 'r') as fr:
+        for i in range(50):
+            # getting around \n character
+            try:
+                sudoku_grid, condition, index,try_val, is_sat = fr.readline().split('\t')
+            except ValueError:
+                sudoku_grid, condition, index,try_val, is_sat = fr.readline().split('\t')
+            sudoku_grid = list(sudoku_grid)
+            sudoku_lst = list(map(int,sudoku_grid))
+            condition = eval(condition)
+            index = eval(index)
+            try_val = eval(try_val)
+            is_sat = is_sat=="sat"
+            # solve with other conditions
+            CorAconditions = [ele for ele in FULL_CONDITIONS if ele[0]==condition[0]]
+            for (i,CorAcondition) in enumerate(CorAconditions):
+                time, penalty = Sudoku.check_condition_index(sudoku_lst,CorAcondition,index,try_val,is_sat)
+                time_lst[i+len(FULL_CONDITIONS)//2*condition[0]].append((time,penalty)) # This line of code could break easily
+    with open(store_file_path, 'w') as fw:
+        fw.write(str(time_lst))
+
+
 if __name__ == '__main__':
     dct = {"curr_line_path": 'curr_line.txt',
     "classic_full_path": '../store-sudoku/classic_full_sudokus.txt',
@@ -160,14 +199,16 @@ if __name__ == '__main__':
     argyle_full_path = '../store-sudoku/argyle_full_sudokus.txt'
     classic_holes_path = '../store-sudoku/classic_holes_sudokus.txt'
     argyle_holes_path = '../store-sudoku/argyle_holes_sudokus.txt'
-
+    hard_instances_file_path = "./sudoku-logFile/argyle.txt"
+    store_comparison_file_path = "./sudoku-logFile/comparison.txt"
+    load_and_alternative_solve(hard_instances_file_path,store_comparison_file_path)
 
     # run_experiment(False, full_iter=30, holes_iter=30,
     #                total_time_per_condition=5 * 60 * 10000000,
     #                start_condition=[True, True, False, False, False],
     #                start_from_next=True)
-    run_experiment(single_condition=False, full_iter=20, holes_iter=20,
-                   total_time_per_condition=1 * 60 * 1000)
+    # run_experiment(single_condition=False, full_iter=20, holes_iter=20,
+    #                total_time_per_condition=1 * 60 * 1000)
     # run_experiment(True, [False, False, True, True, True], run_full=True, run_holes=False, full_iter=1000,
     #                total_time_per_condition = 5 * 60 * 10000000)
 

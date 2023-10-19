@@ -5,15 +5,14 @@ from pathlib import Path
 from typing import Tuple, List
 from itertools import islice
 
-
 import Sudoku
 
 FULL_CONDITIONS = [[classic, distinct, percol, nonum, prefill]
-                      for classic in (True, False)
-                      for distinct in (True, False)
-                      for percol in (True, False)
-                      for nonum in (True, False) if not (distinct and nonum)
-                      for prefill in (True, False)]
+                   for classic in (True, False)
+                   for distinct in (True, False)
+                   for percol in (True, False)
+                   for nonum in (True, False) if not (distinct and nonum)
+                   for prefill in (True, False)]
 
 
 # Remember to reset the dict in curr_line.txt if the file exist
@@ -45,9 +44,9 @@ def to_str(bool_list) -> str:
                         "prefill-" if bool_list[4] else "no_prefill-"))
 
 
-def to_bool(condition_str: str)-> list[bool]:
+def to_bool(condition_str: str) -> list[bool]:
     condition_lst = condition_str.split('-')
-    assert len(condition_lst)>=4, "Cannot convert condition string"
+    assert len(condition_lst) >= 4, "Cannot convert condition string"
     if len(condition_lst) == 4:
         return [True if condition_lst[0].lower() == "classic" else False,
                 True if condition_lst[1].lower() == "distinct" else False,
@@ -59,7 +58,7 @@ def to_bool(condition_str: str)-> list[bool]:
 
 
 def run_experiment(single_condition: bool, *args,
-                   full_iter: int = 0, holes_iter: int = 0, total_time_per_condition=5*60, start_condition=[],
+                   full_iter: int = 0, holes_iter: int = 0, total_time_per_condition=5 * 60, start_condition=[],
                    end_condition=[],
                    start_from_next=False):
     try:
@@ -80,7 +79,7 @@ def run_experiment(single_condition: bool, *args,
                       for prefill in (True, False)]
         if start_condition:
             conditions = conditions[conditions.index(start_condition) + start_from_next:]
-    if full_iter>0:
+    if full_iter > 0:
         for ele in conditions:
             exceed_time_limit = False
             # full_sudoku_path = '../store-sudoku/' + ''.join(condition) + 'full_sudokus.txt'
@@ -92,9 +91,9 @@ def run_experiment(single_condition: bool, *args,
                 hard_sudoku_path = './sudoku-logFile/argyle.txt'
 
             condition_name = to_str(ele) + 'full_time'
-            condition_progress = f'{conditions.index(ele)+1}/{len(conditions)}'
+            condition_progress = f'{conditions.index(ele) + 1}/{len(conditions)}'
             for i in range(full_iter):
-                print(f'{i+1}th iteration: Processing full sudoku {condition_name}'
+                print(f'{i + 1}th iteration: Processing full sudoku {condition_name}'
                       f'Total Progress: {condition_progress} of all conditions')
 
                 if condition_name not in total_solve:
@@ -112,7 +111,7 @@ def run_experiment(single_condition: bool, *args,
                     f.write(f'{full_time},{full_penalty}\n')
             if exceed_time_limit:
                 print(f'{full_sudoku_path} {ele} exceeded time limit when generating full_grid')
-    if holes_iter>0:
+    if holes_iter > 0:
         for ele in conditions:
             enough_sudoku = True
             if ele[0]:
@@ -129,7 +128,7 @@ def run_experiment(single_condition: bool, *args,
                     f.seek(curr_line[full_sudoku_path])
                 condition_name = to_str(ele) + 'holes_time'
                 for i in range(holes_iter):
-                    print(f'{i+1}th iteration: Processing holes sudoku {condition_name}')
+                    print(f'{i + 1}th iteration: Processing holes sudoku {condition_name}')
                     sudoku_lst = f.readline()[:-1]  # get rid of new line character
                     if condition_name not in total_solve:
                         total_solve[condition_name] = 0
@@ -166,48 +165,62 @@ def run_experiment(single_condition: bool, *args,
     print("Process Finished")
 
 
-def load_and_alternative_solve(hard_instances_file_path:str,store_file_path:str,num_iter:int):
+def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, num_iter: int):
     """
     Writes a dictionary with {problem: , cond_1_time: , cond_2_time: cond_3_time: cond_4_time: ...}
     Condition[0] MUST be TRUE when classic and FALSE when argyle
     :param file_path:
     :return: None
     """
-    store_result_dict = {}
+    assert os.path.isdir(hard_instances_file_dir), "directory provided does not exist"
+    if is_classic:
+        hard_instances_file_path = hard_instances_file_dir+"classic.txt"
+        store_comparison_file_path = hard_instances_file_dir + "classic_time.txt"
+    else:
+        hard_instances_file_path = hard_instances_file_dir+"argyle.txt"
+        store_comparison_file_path = hard_instances_file_dir + "argyle_time.txt"
+
     with open(hard_instances_file_path, 'r+') as fr:
         skip_line: int = eval(fr.readline())
-        for line in islice(fr,skip_line,skip_line+num_iter):
+        temp_iteration_num = 0
+        for line in islice(fr, skip_line, skip_line + num_iter):
+            print(f'On iteration: {temp_iteration_num+1}')
+            temp_iteration_num += 1
             # getting around \n character
             try:
-                sudoku_grid, condition, index,try_val, is_sat = fr.readline().split('\t')
+                sudoku_grid, condition, index, try_val, is_sat = line.strip().split('\t')
             except ValueError:
-                raise "Failed to read lines from input file, \ncheck input for or run more experiments. "
+                continue
+            store_result_dict = {}
             sudoku_grid = list(sudoku_grid)
-            sudoku_lst = list(map(int,sudoku_grid))
+            sudoku_lst = list(map(int, sudoku_grid))
             condition = eval(condition)
             index = eval(index)
             try_val = eval(try_val)
-            is_sat = is_sat=="sat"
+            is_sat = is_sat == "sat"
             # solve with other conditions
-            CorAconditions = [ele for ele in FULL_CONDITIONS if ele[0]==condition[0]]
-            for (i,CorAcondition) in enumerate(CorAconditions):
-                time, penalty = Sudoku.check_condition_index(sudoku_lst,CorAcondition,index,try_val,is_sat)
-                store_result_dict[CorAcondition] = (time,penalty)
-                # time_lst[i+len(FULL_CONDITIONS)//2*(not condition[0])].append((time,penalty)) # This line of code could break easily
+            store_result_dict["problem"] = line
+            CorAconditions = [ele for ele in FULL_CONDITIONS if ele[0] == condition[0]]
+            for (i, CorAcondition) in enumerate(CorAconditions):
+                time, penalty = Sudoku.check_condition_index(sudoku_lst, CorAcondition, index, try_val, is_sat)
+                store_result_dict[str(CorAcondition)] = (time, penalty)
+            with open(store_comparison_file_path, 'a+') as fw:
+                fw.write(str(store_result_dict)+'\n')
 
         skip_line += num_iter
         fr.seek(0)
-        fr.writelines(skip_line)
-    with open(store_file_path, 'a+') as fw:
-        # fw.write(str(time_lst))
-        fw.write(store_result_dict)
+        fr.write(f'{skip_line}\n')
+
+
+
+
 #
 if __name__ == '__main__':
     dct = {"curr_line_path": 'curr_line.txt',
-    "classic_full_path": '../store-sudoku/classic_full_sudokus.txt',
-    "argyle_full_path": '../store-sudoku/argyle_full_sudokus.txt',
-    "classic_holes_path": '../store-sudoku/classic_holes_sudokus.txt',
-    "argyle_holes_path": "../store-sudoku/argyle_holes_sudokus.txt"}
+           "classic_full_path": '../store-sudoku/classic_full_sudokus.txt',
+           "argyle_full_path": '../store-sudoku/argyle_full_sudokus.txt',
+           "classic_holes_path": '../store-sudoku/classic_holes_sudokus.txt',
+           "argyle_holes_path": "../store-sudoku/argyle_holes_sudokus.txt"}
     # Left off with argyle-distinct-inorder-is_num-no_prefill-full_timeTotal
 
     curr_line_path = 'curr_line.txt'
@@ -216,13 +229,9 @@ if __name__ == '__main__':
     classic_holes_path = '../store-sudoku/classic_holes_sudokus.txt'
     argyle_holes_path = '../store-sudoku/argyle_holes_sudokus.txt'
 
-
-    # hard_instances_file_path = "./sudoku-logFile/argyle.txt"
-    store_comparison_file_path = "./sudoku-logFile/comparison.txt"
-    # load_and_alternative_solve(hard_instances_file_path,store_comparison_file_path)
-    hard_instances_file_path = "./sudoku-logFile/classic.txt"
-    load_and_alternative_solve(hard_instances_file_path,store_comparison_file_path)
-
+    hard_instances_file_dir = "./sudoku-logFile/"
+    load_and_alternative_solve(hard_instances_file_dir, is_classic=True, num_iter=50)
+    load_and_alternative_solve(hard_instances_file_dir, is_classic=False, num_iter=45)
 
     # run_experiment(False, full_iter=30, holes_iter=30,
     #                total_time_per_condition=5 * 60 * 10000000,
@@ -234,3 +243,4 @@ if __name__ == '__main__':
     #                total_time_per_condition = 5 * 60 * 10000000)
 
     print("Process Complete")
+

@@ -81,7 +81,7 @@ class Sudoku:
             self._grid = [[[z3.Bool('cell_%d_%d_%d' % (r + 1, c + 1, num + 1)) for num in range(9)] for c in range(9)]
                           for r in range(9)]
 
-        assert (len(sudoku_array) == 81), "Invalid sudoku string provided! (length)"
+        assert (len(sudoku_array) == 81), f"Invalid sudoku string provided! length:{len(sudoku_array)}"
         self.load_numbers(sudoku_array[:81])
 
         # Add constraints for classic sudoku

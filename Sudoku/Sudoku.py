@@ -596,7 +596,7 @@ def gen_holes_sudoku(solved_sudoku: list[int], *constraints, hard_smt_logPath='s
     append_list_to_file(store_sudoku_path, solved_sudoku)
     return time_rec, penalty
 
-def check_condition_index(sudoku_grid: list[int],condition,index:(int,int),try_val:int,is_sat):
+def check_condition_index(sudoku_grid: list[int],condition,index:(int,int),try_val:int,is_sat) -> (int, int):
     """
 
     :param sudoku_grid:
@@ -607,6 +607,7 @@ def check_condition_index(sudoku_grid: list[int],condition,index:(int,int),try_v
     :return: (time,penalty)
     """
     s = Sudoku(sudoku_grid,*condition)
+    s.load_constraints()
     start = time.time()
     penalty = 0
     if is_sat:

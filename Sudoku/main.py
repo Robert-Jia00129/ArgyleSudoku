@@ -2,6 +2,9 @@ import os
 import time
 import zipfile
 from pathlib import Path
+from typing import Tuple, List
+from itertools import islice
+
 
 import Sudoku
 
@@ -42,7 +45,16 @@ def to_str(bool_list) -> str:
                         "prefill-" if bool_list[4] else "no_prefill-"))
 
 
-def to_bool(condition_str: str) -> bool:
+def to_bool(condition_str: str)-> list[bool]:
+    condition_lst = condition_str.split('-')
+    assert len(condition_lst)>=4, "Cannot convert condition string"
+    if len(condition_lst) == 4:
+        return [True if condition_lst[0].lower() == "classic" else False,
+                True if condition_lst[1].lower() == "distinct" else False,
+                True if condition_lst[2].lower() == "percol" else False,
+                True if condition_lst[3].lower() == "is_bool" else False,
+                True if condition_lst[4].lower() == "prefill" else False,
+                True if condition_lst[5].lower() == "gen_time" else False]
     pass
 
 
@@ -154,23 +166,22 @@ def run_experiment(single_condition: bool, *args,
     print("Process Finished")
 
 
-def load_and_alternative_solve(hard_instances_file_path:str,store_file_path:str):
+def load_and_alternative_solve(hard_instances_file_path:str,store_file_path:str,num_iter:int):
     """
+    Writes a dictionary with {problem: , cond_1_time: , cond_2_time: cond_3_time: cond_4_time: ...}
     Condition[0] MUST be TRUE when classic and FALSE when argyle
     :param file_path:
-    :return:
+    :return: None
     """
-    with open(store_file_path,'r') as fr:
-        time_lst = eval(fr.read())
-        if time_lst == "":
-            time_lst = [[] for i in range(len(FULL_CONDITIONS))]
-    with open(hard_instances_file_path, 'r') as fr:
-        for i in range(50):
+    store_result_dict = {}
+    with open(hard_instances_file_path, 'r+') as fr:
+        skip_line: int = eval(fr.readline())
+        for line in islice(fr,skip_line,skip_line+num_iter):
             # getting around \n character
             try:
                 sudoku_grid, condition, index,try_val, is_sat = fr.readline().split('\t')
             except ValueError:
-                sudoku_grid, condition, index,try_val, is_sat = fr.readline().split('\t')
+                raise "Failed to read lines from input file, \ncheck input for or run more experiments. "
             sudoku_grid = list(sudoku_grid)
             sudoku_lst = list(map(int,sudoku_grid))
             condition = eval(condition)
@@ -181,11 +192,16 @@ def load_and_alternative_solve(hard_instances_file_path:str,store_file_path:str)
             CorAconditions = [ele for ele in FULL_CONDITIONS if ele[0]==condition[0]]
             for (i,CorAcondition) in enumerate(CorAconditions):
                 time, penalty = Sudoku.check_condition_index(sudoku_lst,CorAcondition,index,try_val,is_sat)
-                time_lst[i+len(FULL_CONDITIONS)//2*condition[0]].append((time,penalty)) # This line of code could break easily
-    with open(store_file_path, 'w') as fw:
-        fw.write(str(time_lst))
+                store_result_dict[CorAcondition] = (time,penalty)
+                # time_lst[i+len(FULL_CONDITIONS)//2*(not condition[0])].append((time,penalty)) # This line of code could break easily
 
-
+        skip_line += num_iter
+        fr.seek(0)
+        fr.writelines(skip_line)
+    with open(store_file_path, 'a+') as fw:
+        # fw.write(str(time_lst))
+        fw.write(store_result_dict)
+#
 if __name__ == '__main__':
     dct = {"curr_line_path": 'curr_line.txt',
     "classic_full_path": '../store-sudoku/classic_full_sudokus.txt',
@@ -199,9 +215,14 @@ if __name__ == '__main__':
     argyle_full_path = '../store-sudoku/argyle_full_sudokus.txt'
     classic_holes_path = '../store-sudoku/classic_holes_sudokus.txt'
     argyle_holes_path = '../store-sudoku/argyle_holes_sudokus.txt'
-    hard_instances_file_path = "./sudoku-logFile/argyle.txt"
+
+
+    # hard_instances_file_path = "./sudoku-logFile/argyle.txt"
     store_comparison_file_path = "./sudoku-logFile/comparison.txt"
+    # load_and_alternative_solve(hard_instances_file_path,store_comparison_file_path)
+    hard_instances_file_path = "./sudoku-logFile/classic.txt"
     load_and_alternative_solve(hard_instances_file_path,store_comparison_file_path)
+
 
     # run_experiment(False, full_iter=30, holes_iter=30,
     #                total_time_per_condition=5 * 60 * 10000000,
@@ -212,3 +233,4 @@ if __name__ == '__main__':
     # run_experiment(True, [False, False, True, True, True], run_full=True, run_holes=False, full_iter=1000,
     #                total_time_per_condition = 5 * 60 * 10000000)
 
+    print("Process Complete")

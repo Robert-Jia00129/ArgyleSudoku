@@ -66,6 +66,7 @@ class Sudoku:
         self._penalty = 0
         self.condition_tpl = (self._classic,self._distinct,self._per_col,self._no_num,self._prefill)
         self._print_progress = print_progress
+        self._bool_timeout = False
 
         # Create variables
         if not no_num:

@@ -165,7 +165,7 @@ def run_experiment(single_condition: bool, *args,
     print("Process Finished")
 
 
-def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, num_iter: int):
+def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, num_iter: int, currline_path="curr_instance_line.txt"):
     """
     Writes a dictionary with {problem: , cond_1_time: , cond_2_time: cond_3_time: cond_4_time: ...}
     Condition[0] MUST be TRUE when classic and FALSE when argyle
@@ -181,7 +181,14 @@ def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, n
         store_comparison_file_path = hard_instances_file_dir + "argyle_time.txt"
 
     with open(hard_instances_file_path, 'r+') as fr:
-        skip_line: int = eval(fr.readline())
+        with open(currline_path, "r") as ftempr:
+            # TODO: Require modification when adding additional solveres
+            argyle_and_classic_time_dict = fr.readline()
+            if argyle_and_classic_time_dict == '':
+                argyle_and_classic_time_dict = {"classic": 0, "argyle": 0}
+            else:
+                argyle_and_classic_time_dict = eval(argyle_and_classic_time_dict)
+        skip_line: int = argyle_and_classic_time_dict["classic"]
         temp_iteration_num = 0
         for line in islice(fr, skip_line, skip_line + num_iter):
             print(f'On iteration: {temp_iteration_num+1}')
@@ -212,7 +219,8 @@ def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, n
         fr.write(f'{skip_line}\n')
 
 
-
+def solve_with_cvc5(smt_log_file_path: str) -> (int, int):
+    pass
 
 #
 if __name__ == '__main__':

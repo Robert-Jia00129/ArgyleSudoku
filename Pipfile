@@ -10,6 +10,7 @@ matplotlib = "*"
 display = "*"
 pandas = "*"
 jupyter = "*"
+cvc5 = "*"
 
 [dev-packages]
 

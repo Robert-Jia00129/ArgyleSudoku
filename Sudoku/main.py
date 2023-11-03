@@ -242,7 +242,7 @@ def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, n
             ftempw.truncate()
             curr_rand_index += num_iter
             argyle_and_classic_time_dict["classic" if is_classic else "argyle"] = curr_rand_index
-            ftempw.write(f'{}\n')
+            ftempw.write(f'{argyle_and_classic_time_dict}\n')
 
 def random_lines(filename, seed, index, num_lines):
     line_prng = random.Random(seed)

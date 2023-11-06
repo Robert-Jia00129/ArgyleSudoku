@@ -86,10 +86,10 @@ def run_experiment(single_condition: bool, *args,
             # full_sudoku_path = '../store-sudoku/' + ''.join(condition) + 'full_sudokus.txt'
             if ele[0]:
                 full_sudoku_path = classic_full_path
-                hard_sudoku_path = 'hard_sudoku_instance-logFile/classic.txt'
+                hard_sudoku_path = 'hard_sudoku_instance-logFile/classic_instances.txt'
             else:
                 full_sudoku_path = argyle_full_path
-                hard_sudoku_path = 'hard_sudoku_instance-logFile/argyle.txt'
+                hard_sudoku_path = 'hard_sudoku_instance-logFile/argyle_instance.txt'
 
             condition_name = to_str(ele) + 'full_time'
             condition_progress = f'{conditions.index(ele) + 1}/{len(conditions)}'
@@ -118,11 +118,11 @@ def run_experiment(single_condition: bool, *args,
             if ele[0]:
                 full_sudoku_path = classic_full_path
                 holes_sudoku_path = classic_holes_path
-                hard_sudoku_path = 'hard_sudoku_instance-logFile/classic.txt'
+                hard_sudoku_path = 'hard_sudoku_instance-logFile/classic_instances.txt'
             else:
                 full_sudoku_path = argyle_full_path
                 holes_sudoku_path = argyle_holes_path
-                hard_sudoku_path = 'hard_sudoku_instance-logFile/argyle.txt'
+                hard_sudoku_path = 'hard_sudoku_instance-logFile/argyle_instance.txt'
 
             with open(full_sudoku_path, 'r') as f:
                 if full_sudoku_path in curr_line:
@@ -175,10 +175,10 @@ def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, n
     """
     assert os.path.isdir(hard_instances_file_dir), "directory provided does not exist"
     if is_classic:
-        hard_instances_file_path = hard_instances_file_dir+"classic.txt"
+        hard_instances_file_path = hard_instances_file_dir+"classic_instances.txt"
         store_comparison_file_path = hard_instances_file_dir + "classic_time.txt"
     else:
-        hard_instances_file_path = hard_instances_file_dir+"argyle.txt"
+        hard_instances_file_path = hard_instances_file_dir+"argyle_instance.txt"
         store_comparison_file_path = hard_instances_file_dir + "argyle_time.txt"
 
     with open(hard_instances_file_path, 'r+') as fr: # this line not really necessary, but I'm afraid to remove

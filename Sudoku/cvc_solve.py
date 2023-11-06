@@ -1,6 +1,6 @@
 import cvc5
-from cvc5 import Kind
-#
+# from cvc5 import Kind
+
 # def solve_smt_file(file_name):
 #     # Create a solver instance
 #     solver = cvc5.Solver()

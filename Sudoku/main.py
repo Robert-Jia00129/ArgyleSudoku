@@ -86,10 +86,10 @@ def run_experiment(single_condition: bool, *args,
             # full_sudoku_path = '../store-sudoku/' + ''.join(condition) + 'full_sudokus.txt'
             if ele[0]:
                 full_sudoku_path = classic_full_path
-                hard_sudoku_path = './sudoku-logFile/classic.txt'
+                hard_sudoku_path = 'hard_sudoku_instance-logFile/classic.txt'
             else:
                 full_sudoku_path = argyle_full_path
-                hard_sudoku_path = './sudoku-logFile/argyle.txt'
+                hard_sudoku_path = 'hard_sudoku_instance-logFile/argyle.txt'
 
             condition_name = to_str(ele) + 'full_time'
             condition_progress = f'{conditions.index(ele) + 1}/{len(conditions)}'
@@ -118,11 +118,11 @@ def run_experiment(single_condition: bool, *args,
             if ele[0]:
                 full_sudoku_path = classic_full_path
                 holes_sudoku_path = classic_holes_path
-                hard_sudoku_path = './sudoku-logFile/classic.txt'
+                hard_sudoku_path = 'hard_sudoku_instance-logFile/classic.txt'
             else:
                 full_sudoku_path = argyle_full_path
                 holes_sudoku_path = argyle_holes_path
-                hard_sudoku_path = './sudoku-logFile/argyle.txt'
+                hard_sudoku_path = 'hard_sudoku_instance-logFile/argyle.txt'
 
             with open(full_sudoku_path, 'r') as f:
                 if full_sudoku_path in curr_line:
@@ -273,8 +273,8 @@ if __name__ == '__main__':
     classic_holes_path = '../store-sudoku/classic_holes_sudokus.txt'
     argyle_holes_path = '../store-sudoku/argyle_holes_sudokus.txt'
 
-    hard_instances_file_dir = "./sudoku-logFile/"
-    alternative_solve_curr_line_path = "./sudoku-logFile/curr_instance_line.txt"
+    hard_instances_file_dir = "hard_sudoku_instance-logFile/"
+    alternative_solve_curr_line_path = "hard_sudoku_instance-logFile/curr_instance_line.txt"
     load_and_alternative_solve(hard_instances_file_dir, is_classic=True, num_iter=1, currline_path=alternative_solve_curr_line_path)
     load_and_alternative_solve(hard_instances_file_dir, is_classic=False, num_iter=45,currline_path=alternative_solve_curr_line_path)
 

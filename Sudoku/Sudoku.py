@@ -26,8 +26,8 @@ class Sudoku:
     _classic = True
     _no_num = True
     _per_col = True
-    hard_smt_logPath = None
-    hard_sudoku_logPath = None
+    _hard_smt_logPath = None
+    _hard_sudoku_logPath = None
     _prefill = False
 
     def __init__(self, sudoku_array: List[int], classic: bool, distinct: bool, per_col: bool, no_num: bool,
@@ -61,8 +61,8 @@ class Sudoku:
         self._no_num = no_num
         self._per_col = per_col
         self._nums = [[0 for _ in range(9)] for _ in range(9)]
-        self.hard_smt_logPath = hard_smt_logPath
-        self.hard_sudoku_logPath = hard_sudoku_logPath
+        self._hard_smt_logPath = hard_smt_logPath
+        self._hard_sudoku_logPath = hard_sudoku_logPath
         self._prefill = prefill
         self._penalty = 0
         self.condition_tpl = (self._classic, self._distinct, self._per_col, self._no_num, self._prefill)
@@ -250,6 +250,10 @@ class Sudoku:
         else:
             self._solver.add(self._grid[i][j] == tryVal)
 
+
+    def add_not_equal_constraint(self, i, j, tryVal):
+        self._solver.add(self._grid[i][j][tryVal - 1] == False if self._no_num else self._grid[i][j] != int(tryVal))
+
     def gen_solved_sudoku(self):
         """
         produce a solved FULL sudoku
@@ -282,7 +286,7 @@ class Sudoku:
                             check = s_new.check_condition(i, j, tryVal)
 
                             # Record to log path *********
-                            if self.hard_smt_logPath:
+                            if self._hard_smt_logPath:
                                 self.write_to_smt_and_sudoku_file((i, j), tryVal, check)
                             else:
                                 print("TimeOut and a logPath is not provided")
@@ -349,7 +353,7 @@ class Sudoku:
                                         s_new = self.new_solver()
                                         check = s_new.check_condition(r, c, num)
 
-                                        if self.hard_smt_logPath:
+                                        if self._hard_smt_logPath:
                                             self.write_to_smt_and_sudoku_file((r, c), num, check)
                                         else:
                                             print("TimeOut and a logPath is not provided")
@@ -380,7 +384,7 @@ class Sudoku:
         """
         if self._print_progress:
             print(self._nums)
-        with open(self.hard_smt_logPath, 'w') as f:
+        with open(self._hard_smt_logPath, 'w') as f:
             s = ''.join(str(ele) for rows in self._nums for ele in rows)
             f.write(s)
 
@@ -403,20 +407,54 @@ class Sudoku:
         print(t, t.check())
         """
         # check directory exist
-        par_dir = Path(self.hard_smt_logPath).parent
+        par_dir = Path(self._hard_smt_logPath).parent
         if not os.path.exists(par_dir):
             os.makedirs(par_dir)
         time_str = time.strftime("%m_%d_%H_%M_%S") + str(time.time())
-        with open(self.hard_smt_logPath + time_str, 'w') as myfile:
+        # record as smt file
+        with open(self._hard_smt_logPath + time_str, 'w') as myfile:
             print(self._solver.to_smt2(), file=myfile)
 
         # check directory exist
-        par_dir = Path(self.hard_sudoku_logPath).parent
+        par_dir = Path(self._hard_sudoku_logPath).parent
         if not os.path.exists(par_dir):
             os.makedirs(par_dir)
-        with open(self.hard_sudoku_logPath, 'a+') as myfile:
+        # record sudoku as string file
+        with open(self._hard_sudoku_logPath, 'a+') as myfile:
             sudoku_lst = ''.join(str(ele) for rows in self._nums for ele in rows)
             print(f'{sudoku_lst}\t{self.condition_tpl}\t{pos}\t{value}\t{sat}\n', file=myfile)
+
+    def generate_smt_with_additional_constraint(self, index: (int, int), try_val: int, is_sat: bool,
+                                                smt_dir: str) -> str:
+        """
+        Add an additional constraint to the Sudoku problem, generate an SMT file, and return the file path.
+
+        :param index: Tuple (row, column) of the cell for the additional constraint.
+        :param try_val: The value to assign or not assign at the given index.
+        :param is_sat: If True, the cell at index should be try_val; if False, it should not be try_val.
+        :param smt_dir: Directory to store the generated SMT file.
+        :return: The path to the generated SMT file.
+        """
+        self.load_constraints()
+
+        # Add the specific condition for the cell at 'index'
+        i, j = index
+        if is_sat:
+            self.add_constaint(i,j,try_val)
+        else:
+            self.add_not_equal_constraint(i,j,try_val)
+
+
+        # Generate the file path for the SMT file
+        file_name = f"sudoku_smt_{time.strftime('%m_%d_%H_%M_%S')}_{str(time.time())}.smt2"
+        file_path = os.path.join(smt_dir, file_name)
+
+        # Write the SMT-LIB representation to the file
+        with open(file_path, 'w') as smt_file:
+            smt_file.write(self._solver.to_smt2())
+
+        return file_path
+
 
 
 def generate_puzzle(solved_sudokus, classic: bool, distinct: bool, per_col: bool, no_num: bool, prefill: bool,
@@ -581,10 +619,26 @@ def check_condition_index(sudoku_grid: list[int], condition, index: (int, int), 
     return end - start, penalty
 
 
+def generate_smt(grid: str, constraint: list, index: (int, int), try_val: int, is_sat: bool, smt_dir: str) -> str:
+    """
+    Add an additional constraint to the Sudoku problem, generate an SMT file, and return the file path.
+    :param index: Tuple (row, column) of the cell for the additional constraint.
+    :param try_val: The value to assign or not assign at the given index.
+    :param is_sat: If True, the cell at index should be try_val; if False, it should not be try_val.
+    :param smt_dir: Directory to store the generated SMT file.
+    :return: The path to the generated SMT file.
+    """
+    solver = Sudoku(list(map(int,(grid))),*constraint)
+    file_path = solver.generate_smt_with_additional_constraint(index,try_val,is_sat,smt_dir)
+
+    return file_path
+
+
 if __name__ == "__main__":
     # Test classic case
     # classic, distinct, per_col, no_num
-    solve_time, solve_penalty, gen_time, gen_penalty = gen_solve_sudoku(False, True, True, False, True, num_iter=100,
+    solve_time, solve_penalty, gen_time, gen_penalty = gen_solve_sudoku(False, True, True,
+                                                                        False, True, num_iter=100,
                                                                         log_path='DataCollection/')
 
     # print(gen_solve_sudoku(classic=False, distinct=True, per_col=True, no_num=False, prefill=True, num_iter=2,

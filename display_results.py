@@ -67,25 +67,25 @@ def create_table():
                    average_time, num_rows, timeout_perc, timeout_avg]
     return table
 
+if __name__ == '__main__':
+    table = create_table()
+    # export to excel
+    df = pd.DataFrame(table, columns=['classic', 'distinct', 'per_col', 'no_num', 'prefill', 'generating full grid',
+                                      'average time', 'number of rows', 'percentage with any timeouts', 'avg nr of timeouts'])
+    time_rec = df['average time']
+    solve_time = np.array(time_rec[::2])
+    gen_time = np.array(time_rec[1::2])
+    assert len(solve_time) == len(gen_time), "some full/holes sudokus are missing"
+    df['full/holes ratio'] = [None if i % 2 == 0 else solve_time[i//2]/gen_time[i//2] for i in range(len(time_rec))]
+    # print(df)
+    with ExcelWriter(excel_file_path) as writer:
+        df.to_excel(writer,sheet_name="Sheet1")
+        # worksheet = writer.sheets["Sheet1"]
+        # print(type(worksheet))
+        # worksheet.cell()
+        # worksheet.set_column(1, 1, 18)
 
-table = create_table()
-# export to excel
-df = pd.DataFrame(table, columns=['classic', 'distinct', 'per_col', 'no_num', 'prefill', 'generating full grid',
-                                  'average time', 'number of rows', 'percentage with any timeouts', 'avg nr of timeouts'])
-time_rec = df['average time']
-solve_time = np.array(time_rec[::2])
-gen_time = np.array(time_rec[1::2])
-assert len(solve_time) == len(gen_time), "some full/holes sudokus are missing"
-df['full/holes ratio'] = [None if i % 2 == 0 else solve_time[i//2]/gen_time[i//2] for i in range(len(time_rec))]
-# print(df)
-with ExcelWriter(excel_file_path) as writer:
-    df.to_excel(writer,sheet_name="Sheet1")
-    # worksheet = writer.sheets["Sheet1"]
-    # print(type(worksheet))
-    # worksheet.cell()
-    # worksheet.set_column(1, 1, 18)
-
-print("Finished")
+    print("Finished")
 
 
 

@@ -1,20 +1,22 @@
 import os
+import subprocess
 import time
 import zipfile
 from pathlib import Path
-from typing import Tuple, List
+from typing import Tuple, List, Hashable
 from itertools import islice
 import random
 
 import Sudoku
 
-FULL_CONDITIONS = [[classic, distinct, percol, nonum, prefill]
+FULL_CONDITIONS = [(classic, distinct, percol, nonum, prefill) # must be hashable
                    for classic in (True, False)
                    for distinct in (True, False)
                    for percol in (True, False)
                    for nonum in (True, False) if not (distinct and nonum)
                    for prefill in (True, False)]
-
+assert isinstance(FULL_CONDITIONS[0],Hashable), "Conditions MUST be HASHABLE"
+SOLVER_LIST = ("z3", "cvc5")
 
 # Remember to reset the dict in curr_line.txt if the file exist
 
@@ -166,6 +168,100 @@ def run_experiment(single_condition: bool, *args,
     print("Process Finished")
 
 
+def load_and_alternative_solve_outdated(hard_instances_file_dir: str, is_classic: bool, num_iter: int, currline_path="curr_instance_line.txt"):
+    """
+    Writes a dictionary with {problem: , cond_1_time: , cond_2_time: cond_3_time: cond_4_time: ...}
+    Condition[0] MUST be TRUE when classic and FALSE when argyle
+    :param file_path:
+    :return: None
+    """
+    assert os.path.isdir(hard_instances_file_dir), "directory provided does not exist"
+    if is_classic:
+        hard_instances_file_path = hard_instances_file_dir+"classic_instances.txt"
+        store_comparison_file_path = hard_instances_file_dir + "classic_time.txt"
+    else:
+        hard_instances_file_path = hard_instances_file_dir+"argyle_instance.txt"
+        store_comparison_file_path = hard_instances_file_dir + "argyle_time.txt"
+
+    with open(hard_instances_file_path, 'r+') as fr: # this line not really necessary, but I'm afraid to remove
+        with open(currline_path, "r") as ftempr:
+            argyle_and_classic_time_dict = ftempr.readline()
+            if argyle_and_classic_time_dict == '':
+                argyle_and_classic_time_dict = {"classic": 0, "argyle": 0, "seed": 40}
+            else:
+                argyle_and_classic_time_dict = eval(argyle_and_classic_time_dict)
+        curr_rand_index: int = argyle_and_classic_time_dict["classic"if is_classic else "argyle"]
+        rand_seed: int = argyle_and_classic_time_dict["seed"]
+        temp_iteration_num = 0
+        num_lines = sum(1 for _ in open(hard_instances_file_path)) # TODO: This also needs modifications @sj
+        line_generator = random_lines(hard_instances_file_path,rand_seed,curr_rand_index,num_lines)
+        for _ in range(num_iter):
+            line_to_solve = next(line_generator)
+            try:
+                sudoku_grid, condition, index, try_val, is_sat = line_to_solve.strip().split('\t')
+            except ValueError:
+                continue
+            store_result_dict = {}
+            sudoku_grid = list(sudoku_grid)
+            sudoku_lst = list(map(int, sudoku_grid))
+            condition = eval(condition)
+            index = eval(index)
+            try_val = eval(try_val)
+            is_sat = is_sat == "sat"
+            # solve with other conditions
+            store_result_dict["problem"]["grid"] = ''.join(sudoku_grid)
+            store_result_dict["problem"] = index
+            store_result_dict["problem"] = try_val
+            store_result_dict["problem"] = is_sat
+            CorAconditions = [ele for ele in FULL_CONDITIONS if ele[0] == condition[0]]
+            for (i, CorAcondition) in enumerate(CorAconditions):
+                time, penalty = Sudoku.check_condition_index(sudoku_lst, CorAcondition, index, try_val, is_sat)
+                store_result_dict[str(CorAcondition)] = (time, penalty)
+            with open(store_comparison_file_path, 'a+') as fw:
+                fw.write(str(store_result_dict)+'\n')
+
+        with open(currline_path, "w") as ftempw:
+            ftempw.truncate()
+            curr_rand_index += num_iter
+            argyle_and_classic_time_dict["classic" if is_classic else "argyle"] = curr_rand_index
+            ftempw.write(f'{argyle_and_classic_time_dict}\n')
+
+def random_lines(filename, seed, index, num_lines):
+    # TODO: This still needs modifications. @sj
+    line_prng = random.Random(seed)
+    line_numbers = list(range(1, num_lines + 1))
+    line_prng.shuffle(line_numbers)
+    with open(filename, 'r') as f:
+        lines = f.readlines()
+    for i in range(index, num_lines):
+        line_number = line_numbers[i]
+        yield lines[line_number - 1].strip()
+
+
+
+def solve_with_z3(smt_log_file_path: str, time_out: int) -> (int, int):
+    """
+
+    :param smt_log_file_path:
+    :param time_out: in milliseconds
+    :return:
+    """
+    start_time = time.time()
+    result = subprocess.run(["z3", "-smt2", smt_log_file_path, f"-T:{time_out/1000}"], capture_output=True, text=True)
+    end_time = time.time()
+    combined_output = result.stdout + result.stderr # just to make sure
+    return (end_time-start_time,"timeout" in combined_output)
+
+
+def solve_with_cvc5(smt_log_file_path: str, time_out: int) -> (int, int):
+    start_time = time.time()
+    result = subprocess.run(["./cvc5-macOS-arm64", smt_log_file_path, "--lang", "smt2", "--tlimit", str(time_out)],
+                            capture_output=True, text=True)
+    end_time = time.time()
+    combined_output = result.stdout + result.stderr # just to make sure
+    return (end_time-start_time,"cvc5 interrupted by timeout" in combined_output)
+
+
 def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, num_iter: int, currline_path="curr_instance_line.txt"):
     """
     Writes a dictionary with {problem: , cond_1_time: , cond_2_time: cond_3_time: cond_4_time: ...}
@@ -183,81 +279,74 @@ def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, n
 
     with open(hard_instances_file_path, 'r+') as fr: # this line not really necessary, but I'm afraid to remove
         with open(currline_path, "r") as ftempr:
-            # TODO: Require modification when adding additional solveres
             argyle_and_classic_time_dict = ftempr.readline()
             if argyle_and_classic_time_dict == '':
                 argyle_and_classic_time_dict = {"classic": 0, "argyle": 0, "seed": 40}
             else:
                 argyle_and_classic_time_dict = eval(argyle_and_classic_time_dict)
-        curr_rand_index: int = argyle_and_classic_time_dict["classic"if is_classic else "argyle"]
-        rand_seed: int = argyle_and_classic_time_dict["seed"]
-        temp_iteration_num = 0
-        num_lines = sum(1 for _ in open(hard_instances_file_path))
-        line_generator = random_lines(hard_instances_file_path,rand_seed,curr_rand_index,num_lines)
-        for _ in range(num_iter):
-            line_to_solve = next(line_generator)
-            try:
-                sudoku_grid, condition, index, try_val, is_sat = line_to_solve.strip().split('\t')
-            except ValueError:
-                continue
-            store_result_dict = {}
-            sudoku_grid = list(sudoku_grid)
-            sudoku_lst = list(map(int, sudoku_grid))
-            condition = eval(condition)
-            index = eval(index)
-            try_val = eval(try_val)
-            is_sat = is_sat == "sat"
-            # solve with other conditions
-            store_result_dict["problem"] = line_to_solve
-            CorAconditions = [ele for ele in FULL_CONDITIONS if ele[0] == condition[0]]
-            for (i, CorAcondition) in enumerate(CorAconditions):
-                time, penalty = Sudoku.check_condition_index(sudoku_lst, CorAcondition, index, try_val, is_sat)
-                store_result_dict[str(CorAcondition)] = (time, penalty)
-            with open(store_comparison_file_path, 'a+') as fw:
-                fw.write(str(store_result_dict)+'\n')
-        # for line in islice(fr, curr_rand_index, curr_rand_index + num_iter):
-        #     print(f'On iteration: {temp_iteration_num+1}')
-        #     temp_iteration_num += 1
-        #     # getting around \n character
-        #     try:
-        #         sudoku_grid, condition, index, try_val, is_sat = line.strip().split('\t')
-        #     except ValueError:
-        #         continue
-        #     store_result_dict = {}
-        #     sudoku_grid = list(sudoku_grid)
-        #     sudoku_lst = list(map(int, sudoku_grid))
-        #     condition = eval(condition)
-        #     index = eval(index)
-        #     try_val = eval(try_val)
-        #     is_sat = is_sat == "sat"
-        #     # solve with other conditions
-        #     store_result_dict["problem"] = line
-        #     CorAconditions = [ele for ele in FULL_CONDITIONS if ele[0] == condition[0]]
-        #     for (i, CorAcondition) in enumerate(CorAconditions):
-        #         time, penalty = Sudoku.check_condition_index(sudoku_lst, CorAcondition, index, try_val, is_sat)
-        #         store_result_dict[str(CorAcondition)] = (time, penalty)
-        #     with open(store_comparison_file_path, 'a+') as fw:
-        #         fw.write(str(store_result_dict)+'\n')
-        with open(currline_path, "w") as ftempw:
-            ftempw.truncate()
-            curr_rand_index += num_iter
-            argyle_and_classic_time_dict["classic" if is_classic else "argyle"] = curr_rand_index
-            ftempw.write(f'{argyle_and_classic_time_dict}\n')
+    curr_rand_index: int = argyle_and_classic_time_dict["classic" if is_classic else "argyle"]
+    rand_seed: int = argyle_and_classic_time_dict["seed"]
+    num_lines = sum(1 for _ in open(hard_instances_file_path))  # TODO: This also needs modifications @sj
+    line_generator = random_lines(hard_instances_file_path, rand_seed, curr_rand_index, num_lines)
+    for _ in range(num_iter):
+        line_to_solve = next(line_generator)
+        try:
+            sudoku_grid, condition, index, try_val, is_sat = line_to_solve.strip().split('\t')
+        except ValueError:
+            continue
+        store_result_dict = {}
+        sudoku_grid = list(sudoku_grid)
+        sudoku_lst = list(map(int, sudoku_grid))
+        condition = eval(condition) # doesn't really matter
+        index = eval(index)
+        try_val = eval(try_val)
+        is_sat = is_sat == "sat"
+        # solve with other conditions
+        tgrid, tcondition, tindex, ttry_Val, tis_sat = line_to_solve.split("\t")
+        store_result_dict["problem"] = {
+            "grid": tgrid,
+            "index": eval(tindex),
+            "try_Val": eval(ttry_Val),
+            "is_sat": tis_sat=="sat"
+        }
+        CorAconditions = [ele for ele in FULL_CONDITIONS if ele[0] == condition[0]]
+        for CorAcondition in CorAconditions:
+            if (CorAcondition) not in store_result_dict:
+                store_result_dict[CorAcondition] = {} # initialize the dictionary
+            if "smt_path" not in store_result_dict[CorAcondition]:
+                single_condition_smt_path = Sudoku.generate_smt(store_result_dict["problem"]["grid"],
+                                                                CorAcondition,
+                                                                store_result_dict["problem"]["index"],
+                                                                store_result_dict["problem"]["try_Val"],
+                                                                store_result_dict["problem"]["is_sat"],
+                                                                smt_dir="smt-logFiles/")
+                store_result_dict[CorAcondition]["smt_path"] = single_condition_smt_path
+            else:
+                single_condition_smt_path = store_result_dict["smt_path"]
 
-def random_lines(filename, seed, index, num_lines):
-    line_prng = random.Random(seed)
-    line_numbers = list(range(1, num_lines + 1))
-    line_prng.shuffle(line_numbers)
-    with open(filename, 'r') as f:
-        lines = f.readlines()
-    for i in range(index, num_lines):
-        line_number = line_numbers[i]
-        yield lines[line_number - 1].strip()
+            for SOLVER in SOLVER_LIST:
+                store_result_dict[CorAcondition][SOLVER] = solve_with_solver(SOLVER,single_condition_smt_path)
 
-def solve_with_cvc5(smt_log_file_path: str) -> (int, int):
-    pass
+        # write time dictionary to file
+        with open(store_comparison_file_path, 'a+') as fw:
+            fw.write(str(store_result_dict) + '\n')
 
-#
+
+def solve_with_solver(solver_name: str, smt_file_path, time_out = 2) -> (int, int):
+    """
+    solve an smt file with particular solver
+    :param solver_name:
+    :param smt_file_path:
+    :return: (time, did_time_out)
+    """
+    if solver_name == 'z3':
+        return solve_with_z3(smt_file_path,time_out=time_out)
+    elif solver_name == 'cvc5':
+        return solve_with_cvc5(smt_file_path,time_out=time_out)
+    # Add more elif blocks for other solvers
+    raise ValueError(f"Unknown solver: {solver_name}, please implement the corresponding code")
+
+
 if __name__ == '__main__':
     dct = {"curr_line_path": 'curr_line.txt',
            "classic_full_path": '../store-sudoku/classic_full_sudokus.txt',
@@ -276,7 +365,7 @@ if __name__ == '__main__':
     hard_instances_file_dir = "hard_sudoku_instance-logFile/"
     alternative_solve_curr_line_path = "hard_sudoku_instance-logFile/curr_instance_line.txt"
     load_and_alternative_solve(hard_instances_file_dir, is_classic=True, num_iter=1, currline_path=alternative_solve_curr_line_path)
-    load_and_alternative_solve(hard_instances_file_dir, is_classic=False, num_iter=45,currline_path=alternative_solve_curr_line_path)
+    load_and_alternative_solve(hard_instances_file_dir, is_classic=False, num_iter=1, currline_path=alternative_solve_curr_line_path)
 
     # run_experiment(False, full_iter=30, holes_iter=30,
     #                total_time_per_condition=5 * 60 * 10000000,
@@ -288,4 +377,32 @@ if __name__ == '__main__':
     #                total_time_per_condition = 5 * 60 * 10000000)
 
     print("Process Complete")
+
+#
+# explaination of the file structure:
+# # ignore this
+# time = 5.0
+# did_time_out = True
+# tgrid = "1231321093102930129..."
+# tindex = (1,2)
+# ttry_Val = 5
+# tis_sat = "sat"
+#
+# dict = dict(
+# "problem":{
+#     "grid": tgrid, # string
+#     "index": tindex, # (int, int)
+#     "try_Val": ttry_Val, # int
+#     "is_sat": tis_sat # bool
+# },
+# constraint1"{
+#     "smt_path": "/path/to/smt_file_1.smt",
+#     "z3": (time, did_time_out),
+#     "cvc5": (time, did_time_out),
+#     "other_solver": (time, did_time_out)
+#     ...
+# },
+# ...
+# )
+
 

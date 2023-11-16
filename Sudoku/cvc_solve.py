@@ -1,24 +1,13 @@
-import cvc5
-# from cvc5 import Kind
+import subprocess
+import time
 
-# def solve_smt_file(file_name):
-#     # Create a solver instance
-#     solver = cvc5.Solver()
-#
-#     # Read the SMT file
-#     with open(file_name, 'r') as f:
-#         smt_string = f.read()
-#
-#     # Parse the SMT string
-#     smt_expr = solver.parseTerm(smt_string)
-#
-#     # Check satisfiability
-#     result = solver.checkSatAssuming(smt_expr)
-#
-#     # Print result
-#     print(result)
-#
-# solve_smt_file('problem.smt')
-#
-# if __name__ == '__main__':
-#     solve_smt_file('/Users/jiazhenghao/Desktop/CodingProjects/ArgyleSudoku/Sudoku/smt-logFiles/09_28_00_27_101695878830.7237408')
+
+if __name__ == '__main__':
+    smt_log_file_path = "smt-logFiles/sudoku_smt_11_16_02_38_05_1700123885.859515.smt2"
+    start_time = time.time()
+    result = subprocess.run(["./cvc5-macOS-arm64", smt_log_file_path, "--lang", "smt2", "--tlimit", "3"],
+                            capture_output=True, text=True)
+    end_time = time.time()
+    combined_output = result.stdout + result.stderr # just to make sure
+    print(end_time-start_time,"cvc5 interrupted by timeout" in combined_output)
+    print("FINISHED")

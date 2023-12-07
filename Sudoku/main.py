@@ -174,65 +174,6 @@ def run_experiment(single_condition: bool, *args,
     print("Process Finished")
 
 
-def load_and_alternative_solve_outdated(hard_instances_file_dir: str, is_classic: bool, num_iter: int,
-                                        currline_path="curr_instance_line.txt"):
-    """
-    Writes a dictionary with {problem: , cond_1_time: , cond_2_time: cond_3_time: cond_4_time: ...}
-    Condition[0] MUST be TRUE when classic and FALSE when argyle
-    :param file_path:
-    :return: None
-    """
-    assert os.path.isdir(hard_instances_file_dir), "directory provided does not exist"
-    if is_classic:
-        hard_instances_file_path = hard_instances_file_dir + "classic_instances.txt"
-        store_comparison_file_path = hard_instances_file_dir + "classic_time.txt"
-    else:
-        hard_instances_file_path = hard_instances_file_dir + "argyle_instance.txt"
-        store_comparison_file_path = hard_instances_file_dir + "argyle_time.txt"
-
-    with open(hard_instances_file_path, 'r+') as fr:  # this line not really necessary, but I'm afraid to remove
-        with open(currline_path, "r") as ftempr:
-            argyle_and_classic_time_dict = ftempr.readline()
-            if argyle_and_classic_time_dict == '':
-                argyle_and_classic_time_dict = {"classic": 0, "argyle": 0, "seed": 40}
-            else:
-                argyle_and_classic_time_dict = eval(argyle_and_classic_time_dict)
-        curr_rand_index: int = argyle_and_classic_time_dict["classic" if is_classic else "argyle"]
-        rand_seed: int = argyle_and_classic_time_dict["seed"]
-        temp_iteration_num = 0
-        num_lines = sum(1 for _ in open(hard_instances_file_path))  # TODO: This also needs modifications @sj
-        line_generator = random_lines(hard_instances_file_path, rand_seed, curr_rand_index, num_lines)
-        for _ in range(num_iter):
-            line_to_solve = next(line_generator)
-            try:
-                sudoku_grid, condition, index, try_val, is_sat = line_to_solve.strip().split('\t')
-            except ValueError:
-                continue
-            store_result_dict = {}
-            sudoku_grid = list(sudoku_grid)
-            sudoku_lst = list(map(int, sudoku_grid))
-            condition = eval(condition)
-            index = eval(index)
-            try_val = eval(try_val)
-            is_sat = is_sat == "sat"
-            # solve with other conditions
-            store_result_dict["problem"]["grid"] = ''.join(sudoku_grid)
-            store_result_dict["problem"] = index
-            store_result_dict["problem"] = try_val
-            store_result_dict["problem"] = is_sat
-            CorAconditions = [ele for ele in FULL_CONDITIONS if ele[0] == condition[0]]
-            for (i, CorAcondition) in enumerate(CorAconditions):
-                time, penalty = Sudoku.check_condition_index(sudoku_lst, CorAcondition, index, try_val, is_sat)
-                store_result_dict[str(CorAcondition)] = (time, penalty)
-            with open(store_comparison_file_path, 'a+') as fw:
-                fw.write(str(store_result_dict) + '\n')
-
-        with open(currline_path, "w") as ftempw:
-            ftempw.truncate()
-            curr_rand_index += num_iter
-            argyle_and_classic_time_dict["classic" if is_classic else "argyle"] = curr_rand_index
-            ftempw.write(f'{argyle_and_classic_time_dict}\n')
-
 
 def random_lines(filename, seed, index, num_lines):
     # TODO: This still needs modifications. @sj
@@ -389,4 +330,4 @@ if __name__ == '__main__':
 # specify timeout for python subprocesses
 # don't tell time limit
 # record timeout despite the output.
-# exceptions 
+# exceptions

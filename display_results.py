@@ -1,35 +1,17 @@
+# install openyxl
+# install xlwt
 import numpy as np
 import pandas as pd
 import glob
 from displayfunction import display
 from pandas import ExcelWriter
 
-# install openyxl
-# install xlwt
+
 
 
 # TODO: Adjust penalty weight
 penalty_weight = 0  # seconds
 excel_file_path = 'test.xlsx'
-
-
-def useless_function():
-    """
-    :return: A dictionary mapping the file-name to it's corresponding average time
-    """
-    conditions = []
-    ave_time = []
-    dct = {}
-    for file in glob.glob("time-record/*.txt"):
-        with open(file, 'r') as f:
-            a = f.read().split('\n')[:-1]  # strip the last whitespace
-            # ['36.175875663757324,1', '36.49494504928589,1']
-            a = np.average([float(ele.split(',')[0]) + int(ele.split(',')[1]) * penalty_weight for ele in a])
-            print(a)
-            conditions.append(f.name.replace('time-record/', '').replace('.txt', ''))
-            ave_time.append(a)
-            dct[f.name.replace('time-record/', '').replace('.txt', '')] = a
-
 
 def create_table():
     """
@@ -67,7 +49,7 @@ def create_table():
                    average_time, num_rows, timeout_perc, timeout_avg]
     return table
 
-if __name__ == '__main__':
+def export_to_excel():
     table = create_table()
     # export to excel
     df = pd.DataFrame(table, columns=['classic', 'distinct', 'per_col', 'no_num', 'prefill', 'generating full grid',
@@ -85,7 +67,11 @@ if __name__ == '__main__':
         # worksheet.cell()
         # worksheet.set_column(1, 1, 18)
 
-    print("Finished")
+    print("Successfully genreated excel file at ", excel_file_path)
+
+
+if __name__ == '__main__':
+
 
 
 

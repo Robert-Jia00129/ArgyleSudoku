@@ -9,14 +9,15 @@ import random
 
 import Sudoku
 
-FULL_CONDITIONS = [(classic, distinct, percol, nonum, prefill) # must be hashable
+FULL_CONDITIONS = [(classic, distinct, percol, nonum, prefill)  # must be hashable
                    for classic in (True, False)
                    for distinct in (True, False)
                    for percol in (True, False)
                    for nonum in (True, False) if not (distinct and nonum)
                    for prefill in (True, False)]
-assert isinstance(FULL_CONDITIONS[0],Hashable), "Conditions MUST be HASHABLE"
+assert isinstance(FULL_CONDITIONS[0], Hashable), "Conditions MUST be HASHABLE"
 SOLVER_LIST = ("z3", "cvc5")
+
 
 # Remember to reset the dict in curr_line.txt if the file exist
 
@@ -63,7 +64,12 @@ def to_bool(condition_str: str) -> list[bool]:
 def run_experiment(single_condition: bool, *args,
                    full_iter: int = 0, holes_iter: int = 0, total_time_per_condition=5 * 60, start_condition=[],
                    end_condition=[],
-                   start_from_next=False):
+                   start_from_next=False,
+                   curr_line_path: str = 'curr_line.txt',
+                   classic_full_path: str = '../store-sudoku/classic_full_sudokus.txt',
+                   argyle_full_path: str = '../store-sudoku/argyle_full_sudokus.txt',
+                   classic_holes_path: str = '../store-sudoku/classic_holes_sudokus.txt',
+                   argyle_holes_path: str = '../store-sudoku/argyle_holes_sudokus.txt'):
     try:
         with open(curr_line_path, 'r') as f:
             curr_line = eval(f.readline())
@@ -168,7 +174,8 @@ def run_experiment(single_condition: bool, *args,
     print("Process Finished")
 
 
-def load_and_alternative_solve_outdated(hard_instances_file_dir: str, is_classic: bool, num_iter: int, currline_path="curr_instance_line.txt"):
+def load_and_alternative_solve_outdated(hard_instances_file_dir: str, is_classic: bool, num_iter: int,
+                                        currline_path="curr_instance_line.txt"):
     """
     Writes a dictionary with {problem: , cond_1_time: , cond_2_time: cond_3_time: cond_4_time: ...}
     Condition[0] MUST be TRUE when classic and FALSE when argyle
@@ -177,24 +184,24 @@ def load_and_alternative_solve_outdated(hard_instances_file_dir: str, is_classic
     """
     assert os.path.isdir(hard_instances_file_dir), "directory provided does not exist"
     if is_classic:
-        hard_instances_file_path = hard_instances_file_dir+"classic_instances.txt"
+        hard_instances_file_path = hard_instances_file_dir + "classic_instances.txt"
         store_comparison_file_path = hard_instances_file_dir + "classic_time.txt"
     else:
-        hard_instances_file_path = hard_instances_file_dir+"argyle_instance.txt"
+        hard_instances_file_path = hard_instances_file_dir + "argyle_instance.txt"
         store_comparison_file_path = hard_instances_file_dir + "argyle_time.txt"
 
-    with open(hard_instances_file_path, 'r+') as fr: # this line not really necessary, but I'm afraid to remove
+    with open(hard_instances_file_path, 'r+') as fr:  # this line not really necessary, but I'm afraid to remove
         with open(currline_path, "r") as ftempr:
             argyle_and_classic_time_dict = ftempr.readline()
             if argyle_and_classic_time_dict == '':
                 argyle_and_classic_time_dict = {"classic": 0, "argyle": 0, "seed": 40}
             else:
                 argyle_and_classic_time_dict = eval(argyle_and_classic_time_dict)
-        curr_rand_index: int = argyle_and_classic_time_dict["classic"if is_classic else "argyle"]
+        curr_rand_index: int = argyle_and_classic_time_dict["classic" if is_classic else "argyle"]
         rand_seed: int = argyle_and_classic_time_dict["seed"]
         temp_iteration_num = 0
-        num_lines = sum(1 for _ in open(hard_instances_file_path)) # TODO: This also needs modifications @sj
-        line_generator = random_lines(hard_instances_file_path,rand_seed,curr_rand_index,num_lines)
+        num_lines = sum(1 for _ in open(hard_instances_file_path))  # TODO: This also needs modifications @sj
+        line_generator = random_lines(hard_instances_file_path, rand_seed, curr_rand_index, num_lines)
         for _ in range(num_iter):
             line_to_solve = next(line_generator)
             try:
@@ -218,13 +225,14 @@ def load_and_alternative_solve_outdated(hard_instances_file_dir: str, is_classic
                 time, penalty = Sudoku.check_condition_index(sudoku_lst, CorAcondition, index, try_val, is_sat)
                 store_result_dict[str(CorAcondition)] = (time, penalty)
             with open(store_comparison_file_path, 'a+') as fw:
-                fw.write(str(store_result_dict)+'\n')
+                fw.write(str(store_result_dict) + '\n')
 
         with open(currline_path, "w") as ftempw:
             ftempw.truncate()
             curr_rand_index += num_iter
             argyle_and_classic_time_dict["classic" if is_classic else "argyle"] = curr_rand_index
             ftempw.write(f'{argyle_and_classic_time_dict}\n')
+
 
 def random_lines(filename, seed, index, num_lines):
     # TODO: This still needs modifications. @sj
@@ -238,7 +246,6 @@ def random_lines(filename, seed, index, num_lines):
         yield lines[line_number - 1].strip()
 
 
-
 def solve_with_z3(smt_log_file_path: str, time_out: int) -> (int, int):
     """
 
@@ -247,10 +254,10 @@ def solve_with_z3(smt_log_file_path: str, time_out: int) -> (int, int):
     :return:
     """
     start_time = time.time()
-    result = subprocess.run(["z3", "-smt2", smt_log_file_path, f"-T:{time_out/1000}"], capture_output=True, text=True)
+    result = subprocess.run(["z3", "-smt2", smt_log_file_path, f"-T:{time_out / 1000}"], capture_output=True, text=True)
     end_time = time.time()
-    combined_output = result.stdout + result.stderr # just to make sure
-    return (end_time-start_time,"timeout" in combined_output)
+    combined_output = result.stdout + result.stderr  # just to make sure
+    return (end_time - start_time, "timeout" in combined_output)
 
 
 def solve_with_cvc5(smt_log_file_path: str, time_out: int) -> (int, int):
@@ -258,11 +265,12 @@ def solve_with_cvc5(smt_log_file_path: str, time_out: int) -> (int, int):
     result = subprocess.run(["./cvc5-macOS-arm64", smt_log_file_path, "--lang", "smt2", "--tlimit", str(time_out)],
                             capture_output=True, text=True)
     end_time = time.time()
-    combined_output = result.stdout + result.stderr # just to make sure
-    return (end_time-start_time,"cvc5 interrupted by timeout" in combined_output)
+    combined_output = result.stdout + result.stderr  # just to make sure
+    return (end_time - start_time, "cvc5 interrupted by timeout" in combined_output)
 
 
-def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, num_iter: int, currline_path="curr_instance_line.txt"):
+def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, num_iter: int,
+                               currline_path="curr_instance_line.txt"):
     """
     Writes a dictionary with {problem: , cond_1_time: , cond_2_time: cond_3_time: cond_4_time: ...}
     Condition[0] MUST be TRUE when classic and FALSE when argyle
@@ -271,13 +279,13 @@ def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, n
     """
     assert os.path.isdir(hard_instances_file_dir), "directory provided does not exist"
     if is_classic:
-        hard_instances_file_path = hard_instances_file_dir+"classic_instances.txt"
+        hard_instances_file_path = hard_instances_file_dir + "classic_instances.txt"
         store_comparison_file_path = hard_instances_file_dir + "classic_time.txt"
     else:
-        hard_instances_file_path = hard_instances_file_dir+"argyle_instance.txt"
+        hard_instances_file_path = hard_instances_file_dir + "argyle_instance.txt"
         store_comparison_file_path = hard_instances_file_dir + "argyle_time.txt"
 
-    with open(hard_instances_file_path, 'r+') as fr: # this line not really necessary, but I'm afraid to remove
+    with open(hard_instances_file_path, 'r+') as fr:  # this line not really necessary, but I'm afraid to remove
         with open(currline_path, "r") as ftempr:
             argyle_and_classic_time_dict = ftempr.readline()
             if argyle_and_classic_time_dict == '':
@@ -287,6 +295,8 @@ def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, n
     curr_rand_index: int = argyle_and_classic_time_dict["classic" if is_classic else "argyle"]
     rand_seed: int = argyle_and_classic_time_dict["seed"]
     num_lines = sum(1 for _ in open(hard_instances_file_path))  # TODO: This also needs modifications @sj
+    argyle_and_classic_time_dict[
+        "classic" if is_classic else "argyle"] += curr_rand_index + num_iter  # record read lines up till now
     line_generator = random_lines(hard_instances_file_path, rand_seed, curr_rand_index, num_lines)
     for _ in range(num_iter):
         line_to_solve = next(line_generator)
@@ -297,7 +307,7 @@ def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, n
         store_result_dict = {}
         sudoku_grid = list(sudoku_grid)
         sudoku_lst = list(map(int, sudoku_grid))
-        condition = eval(condition) # doesn't really matter
+        condition = eval(condition)  # doesn't really matter
         index = eval(index)
         try_val = eval(try_val)
         is_sat = is_sat == "sat"
@@ -307,12 +317,12 @@ def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, n
             "grid": tgrid,
             "index": eval(tindex),
             "try_Val": eval(ttry_Val),
-            "is_sat": tis_sat=="sat"
+            "is_sat": tis_sat == "sat"
         }
         CorAconditions = [ele for ele in FULL_CONDITIONS if ele[0] == condition[0]]
         for CorAcondition in CorAconditions:
             if (CorAcondition) not in store_result_dict:
-                store_result_dict[CorAcondition] = {} # initialize the dictionary
+                store_result_dict[CorAcondition] = {}  # initialize the dictionary
             if "smt_path" not in store_result_dict[CorAcondition]:
                 single_condition_smt_path = Sudoku.generate_smt(store_result_dict["problem"]["grid"],
                                                                 CorAcondition,
@@ -325,14 +335,17 @@ def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, n
                 single_condition_smt_path = store_result_dict["smt_path"]
 
             for SOLVER in SOLVER_LIST:
-                store_result_dict[CorAcondition][SOLVER] = solve_with_solver(SOLVER,single_condition_smt_path)
+                store_result_dict[CorAcondition][SOLVER] = solve_with_solver(SOLVER, single_condition_smt_path)
 
         # write time dictionary to file
         with open(store_comparison_file_path, 'a+') as fw:
             fw.write(str(store_result_dict) + '\n')
+    with open(currline_path, 'w') as fw:
+        fw.truncate()
+        fw.write(str(argyle_and_classic_time_dict))
 
 
-def solve_with_solver(solver_name: str, smt_file_path, time_out = 2) -> (int, int):
+def solve_with_solver(solver_name: str, smt_file_path, time_out=2) -> (int, int):
     """
     solve an smt file with particular solver
     :param solver_name:
@@ -340,14 +353,15 @@ def solve_with_solver(solver_name: str, smt_file_path, time_out = 2) -> (int, in
     :return: (time, did_time_out)
     """
     if solver_name == 'z3':
-        return solve_with_z3(smt_file_path,time_out=time_out)
+        return solve_with_z3(smt_file_path, time_out=time_out)
     elif solver_name == 'cvc5':
-        return solve_with_cvc5(smt_file_path,time_out=time_out)
+        return solve_with_cvc5(smt_file_path, time_out=time_out)
     # Add more elif blocks for other solvers
     raise ValueError(f"Unknown solver: {solver_name}, please implement the corresponding code")
 
 
 if __name__ == '__main__':
+    # dictionary of file paths to feed into `run_experiment`
     dct = {"curr_line_path": 'curr_line.txt',
            "classic_full_path": '../store-sudoku/classic_full_sudokus.txt',
            "argyle_full_path": '../store-sudoku/argyle_full_sudokus.txt',
@@ -355,17 +369,12 @@ if __name__ == '__main__':
            "argyle_holes_path": "../store-sudoku/argyle_holes_sudokus.txt"}
     # Left off with argyle-distinct-inorder-is_num-no_prefill-full_timeTotal
 
-
-    curr_line_path = 'curr_line.txt'
-    classic_full_path = '../store-sudoku/classic_full_sudokus.txt'
-    argyle_full_path = '../store-sudoku/argyle_full_sudokus.txt'
-    classic_holes_path = '../store-sudoku/classic_holes_sudokus.txt'
-    argyle_holes_path = '../store-sudoku/argyle_holes_sudokus.txt'
-
     hard_instances_file_dir = "hard_sudoku_instance-logFile/"
     alternative_solve_curr_line_path = "hard_sudoku_instance-logFile/curr_instance_line.txt"
-    load_and_alternative_solve(hard_instances_file_dir, is_classic=True, num_iter=1, currline_path=alternative_solve_curr_line_path)
-    load_and_alternative_solve(hard_instances_file_dir, is_classic=False, num_iter=1, currline_path=alternative_solve_curr_line_path)
+    load_and_alternative_solve(hard_instances_file_dir, is_classic=True, num_iter=1,
+                               currline_path=alternative_solve_curr_line_path)
+    load_and_alternative_solve(hard_instances_file_dir, is_classic=False, num_iter=1,
+                               currline_path=alternative_solve_curr_line_path)
 
     # run_experiment(False, full_iter=30, holes_iter=30,
     #                total_time_per_condition=5 * 60 * 10000000,
@@ -377,32 +386,7 @@ if __name__ == '__main__':
     #                total_time_per_condition = 5 * 60 * 10000000)
 
     print("Process Complete")
-
-#
-# explaination of the file structure:
-# # ignore this
-# time = 5.0
-# did_time_out = True
-# tgrid = "1231321093102930129..."
-# tindex = (1,2)
-# ttry_Val = 5
-# tis_sat = "sat"
-#
-# dict = dict(
-# "problem":{
-#     "grid": tgrid, # string
-#     "index": tindex, # (int, int)
-#     "try_Val": ttry_Val, # int
-#     "is_sat": tis_sat # bool
-# },
-# constraint1"{
-#     "smt_path": "/path/to/smt_file_1.smt",
-#     "z3": (time, did_time_out),
-#     "cvc5": (time, did_time_out),
-#     "other_solver": (time, did_time_out)
-#     ...
-# },
-# ...
-# )
-
-
+# specify timeout for python subprocesses
+# don't tell time limit
+# record timeout despite the output.
+# exceptions 

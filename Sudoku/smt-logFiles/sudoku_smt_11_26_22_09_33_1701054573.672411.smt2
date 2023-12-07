@@ -1,6 +1,10 @@
 ; benchmark generated from python API
 (set-info :status unknown)
 (declare-fun cell_1_1 () Int)
+(declare-fun cell_1_2 () Int)
+(declare-fun cell_1_3 () Int)
+(declare-fun cell_1_4 () Int)
+(declare-fun cell_1_5 () Int)
 (declare-fun cell_2_1 () Int)
 (declare-fun cell_3_1 () Int)
 (declare-fun cell_4_1 () Int)
@@ -9,7 +13,6 @@
 (declare-fun cell_7_1 () Int)
 (declare-fun cell_8_1 () Int)
 (declare-fun cell_9_1 () Int)
-(declare-fun cell_1_2 () Int)
 (declare-fun cell_2_2 () Int)
 (declare-fun cell_3_2 () Int)
 (declare-fun cell_4_2 () Int)
@@ -18,7 +21,6 @@
 (declare-fun cell_7_2 () Int)
 (declare-fun cell_8_2 () Int)
 (declare-fun cell_9_2 () Int)
-(declare-fun cell_1_3 () Int)
 (declare-fun cell_2_3 () Int)
 (declare-fun cell_3_3 () Int)
 (declare-fun cell_4_3 () Int)
@@ -27,7 +29,6 @@
 (declare-fun cell_7_3 () Int)
 (declare-fun cell_8_3 () Int)
 (declare-fun cell_9_3 () Int)
-(declare-fun cell_1_4 () Int)
 (declare-fun cell_2_4 () Int)
 (declare-fun cell_3_4 () Int)
 (declare-fun cell_4_4 () Int)
@@ -36,7 +37,6 @@
 (declare-fun cell_7_4 () Int)
 (declare-fun cell_8_4 () Int)
 (declare-fun cell_9_4 () Int)
-(declare-fun cell_1_5 () Int)
 (declare-fun cell_2_5 () Int)
 (declare-fun cell_3_5 () Int)
 (declare-fun cell_4_5 () Int)
@@ -81,6 +81,16 @@
 (declare-fun cell_7_9 () Int)
 (declare-fun cell_8_9 () Int)
 (declare-fun cell_9_9 () Int)
+(assert
+ (= cell_1_1 1))
+(assert
+ (= cell_1_2 8))
+(assert
+ (= cell_1_3 5))
+(assert
+ (= cell_1_4 2))
+(assert
+ (= cell_1_5 7))
 (assert
  (>= cell_1_1 1))
 (assert
@@ -459,5 +469,6 @@
  (and (distinct cell_7_4 cell_7_5 cell_7_6 cell_8_4 cell_8_5 cell_8_6 cell_9_4 cell_9_5 cell_9_6) true))
 (assert
  (and (distinct cell_7_7 cell_7_8 cell_7_9 cell_8_7 cell_8_8 cell_8_9 cell_9_7 cell_9_8 cell_9_9) true))
+(assert
+ (= cell_1_6 6))
 (check-sat)
-

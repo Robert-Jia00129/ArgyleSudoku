@@ -174,31 +174,65 @@ def run_experiment(single_condition: bool, *args,
     print("Process Finished")
 
 
-def solve_with_z3(smt_log_file_path: str, time_out: int) -> (int, int):
+def solve_with_z3(smt_log_file_path: str, time_out: int) -> (int, int, str):
     """
 
     :param smt_log_file_path:
-    :param time_out: in milliseconds
+    :param time_out: in seconds
     :return:
     """
     start_time = time.time()
-    result = subprocess.run(["z3", "-smt2", smt_log_file_path, f"-T:{time_out / 1000}"], capture_output=True, text=True)
+    did_timeout = False
+    try:
+        result = subprocess.run(["z3", "-smt2", smt_log_file_path],
+                                capture_output=True, text=True, timeout=time_out)
+        combined_output = ((result.stdout if result.stdout is not None else "") +
+                           (result.stderr if result.stderr is not None else ""))  # capture all output
+    except subprocess.TimeoutExpired as exc:
+        did_timeout = True
+        result = exc
+    ans = "timeout"
     end_time = time.time()
-    combined_output = result.stdout + result.stderr  # just to make sure
-    return (end_time - start_time, "timeout" in combined_output)
+
+    if not did_timeout:
+        if "unsat" in combined_output:
+            ans = "unsat"
+        elif "sat" in combined_output:
+            ans = "sat"
+        else:
+            ans = "unknown"
+    return (end_time - start_time, did_timeout, ans)
 
 
-def solve_with_cvc5(smt_log_file_path: str, time_out: int) -> (int, int):
+def solve_with_cvc5(smt_log_file_path: str, time_out: int) -> (int, int, str):
     start_time = time.time()
-    result = subprocess.run(["./cvc5-macOS-arm64", smt_log_file_path, "--lang", "smt2", "--tlimit", str(time_out)],
-                            capture_output=True, text=True)
+    did_timeout = False
+    try:
+        result = subprocess.run(["./cvc5-macOS-arm64", smt_log_file_path, "--lang", "smt2"],
+                                capture_output=True, text=True, timeout=time_out)
+        combined_output = ((result.stdout if result.stdout is not None else "") +
+                           (result.stderr if result.stderr is not None else ""))  # capture all output
+    except subprocess.TimeoutExpired as exc:
+        did_timeout = True
+        combined_output = ((exc.stdout.decode('utf-8') if exc.stdout else "") +
+                           (exc.stderr.decode('utf-8') if exc.stderr else ""))  # capture all output
+    ans = "timeout"
+
     end_time = time.time()
-    combined_output = result.stdout + result.stderr  # just to make sure
-    return (end_time - start_time, "cvc5 interrupted by timeout" in combined_output)
+
+    # TODO @sj this might not work. maybe some outputs are not in "sat" or "unsat"??
+    if not did_timeout:
+        if "unsat" in combined_output:
+            ans = "unsat"
+        elif "sat" in combined_output:
+            ans = "sat"
+        else:
+            ans = "unknown"
+    return (end_time - start_time, did_timeout, ans)
 
 
 def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, num_iter: int,
-                               currline_path="curr_instance_line.txt"):
+                               currline_path="curr_instance_line.txt", timeout=5):
     """
     Writes a dictionary with {problem: , cond_1_time: , cond_2_time: cond_3_time: cond_4_time: ...}
     Condition[0] MUST be TRUE when classic and FALSE when argyle
@@ -220,7 +254,7 @@ def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, n
                 argyle_and_classic_time_dict = {"classic": 0, "argyle": 0, "seed": 40}
             else:
                 argyle_and_classic_time_dict = eval(argyle_and_classic_time_dict)
-        curr_line_num: int = argyle_and_classic_time_dict.get("classic" if is_classic else "argyle",0)
+        curr_line_num: int = argyle_and_classic_time_dict.get("classic" if is_classic else "argyle", 0)
         argyle_and_classic_time_dict[
             "classic" if is_classic else "argyle"] += curr_line_num + num_iter  # record read lines up till now
 
@@ -264,7 +298,9 @@ def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, n
                     single_condition_smt_path = store_result_dict["smt_path"]
 
                 for SOLVER in SOLVER_LIST:
-                    store_result_dict[CorAcondition][SOLVER] = solve_with_solver(SOLVER, single_condition_smt_path)
+                    instances_lst = store_result_dict[CorAcondition].get(SOLVER, [])
+                    instances_lst.append(solve_with_solver(SOLVER, single_condition_smt_path, time_out=timeout))
+                    store_result_dict[CorAcondition][SOLVER] = instances_lst
 
             # write time dictionary to file
             with open(store_comparison_file_path, 'a+') as fw:
@@ -274,7 +310,7 @@ def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, n
             fw.write(str(argyle_and_classic_time_dict))
 
 
-def solve_with_solver(solver_name: str, smt_file_path, time_out=2) -> (int, int):
+def solve_with_solver(solver_name: str, smt_file_path, time_out=5) -> (int, int, str):
     """
     solve an smt file with particular solver
     :param solver_name:
@@ -289,6 +325,75 @@ def solve_with_solver(solver_name: str, smt_file_path, time_out=2) -> (int, int)
     raise ValueError(f"Unknown solver: {solver_name}, please implement the corresponding code")
 
 
+def plot_constraints_comparison(option_num: int, solver: str):
+    """
+    Plots the comparison between option_num == True and option_num == False
+    :param option_num: available options: ['classic', 'distinct', 'per_col', 'no_num', 'prefill']
+    :param solver: specify which solver to use. if the string "ALL" is provided, just simply compare the two
+     constraints with ALL solver time
+    :return:
+    """
+    # previous outdated function, do not run. just to give an overview of how the constraints are compared
+    def plot_condition_comparison(df, single_condition):
+        # single_condition = 'distinct'
+        def create_identifier(row, df_columns, single_condition):
+            excluded_cols = ['average time',
+                             'number of rows', 'percentage with any timeouts',
+                             'avg nr of timeouts', 'full/holes ratio', single_condition]
+            values = []
+            for col in df_columns:
+                if col not in excluded_cols:
+                    values.append(str(row[col]))
+            return '_'.join(values)
+
+        df['config_id'] = df.apply(lambda row: create_identifier(row, df.columns, single_condition), axis=1)
+        true_times = df[df[single_condition] == True]
+        false_times = df[df[single_condition] == False]
+
+        # merge dataframe so same conditions (except for single_condition) appears on the same row
+        merged_times = pd.merge(true_times, false_times, on='config_id',
+                                suffixes=('_' + single_condition, '_not_' + single_condition))
+        # Create a new figure with 1 row and 2 columns of subplots
+        fig, axs = plt.subplots(1, 2, figsize=(12, 6))  # Adjust figsize as per your requirement
+        # Extract rows where 'generating full grid' is True and False respectively for distinct and pbeq
+        full_true = merged_times[(merged_times['generating full grid_' + single_condition] == True) & (
+                    merged_times['generating full grid_not_' + single_condition] == True)]
+        full_false = merged_times[(merged_times['generating full grid_' + single_condition] == False) & (
+                    merged_times['generating full grid_not_' + single_condition] == False)]
+
+        # Subplot 1: Generating Full Grid
+        axs[0].scatter(full_true['average time_' + single_condition], full_true['average time_not_' + single_condition],
+                       alpha=0.5)
+        axs[0].set_title('Generating Full Grid')
+        axs[0].set_xlabel(f'Time using {single_condition}')
+        axs[0].set_ylabel(f'Time using not {single_condition}')
+        axs[0].grid(True)
+        min_val_0 = min(min(full_true['average time_' + single_condition]),
+                        min(full_true['average time_not_' + single_condition]))
+        max_val_0 = max(max(full_true['average time_' + single_condition]),
+                        max(full_true['average time_not_' + single_condition]))
+        axs[0].plot([min_val_0, max_val_0], [min_val_0, max_val_0], color='red', linestyle='--', lw=2)
+
+        # Subplot 2: Not Generating Full Grid
+        axs[1].scatter(full_false['average time_' + single_condition],
+                       full_false['average time_not_' + single_condition], alpha=0.5, color='green')
+        axs[1].set_title('Generating Grid With Holes')
+        axs[1].set_xlabel(f'Time using {single_condition}')
+        axs[1].set_ylabel(f'Time using not {single_condition}')
+        axs[1].grid(True)
+        min_val_1 = min(min(full_false['average time_' + single_condition]),
+                        min(full_false['average time_not_' + single_condition]))
+        max_val_1 = max(max(full_false['average time_' + single_condition]),
+                        max(full_false['average time_not_' + single_condition]))
+        axs[1].plot([min_val_1, max_val_1], [min_val_1, max_val_1], color='red', linestyle='--', lw=2)
+
+        # Adjust spacing between subplots
+        plt.tight_layout(pad=4.0)
+
+        # Display the plots
+        plt.show()
+
+
 if __name__ == '__main__':
     # dictionary of file paths to feed into `run_experiment`
     dct = {"curr_line_path": 'curr_line.txt',
@@ -300,10 +405,10 @@ if __name__ == '__main__':
 
     hard_instances_file_dir = "hard_sudoku_instance-logFile/"
     alternative_solve_curr_line_path = "hard_sudoku_instance-logFile/curr_instance_line.txt"
-    load_and_alternative_solve(hard_instances_file_dir, is_classic=True, num_iter=1,
-                               currline_path=alternative_solve_curr_line_path)
-    load_and_alternative_solve(hard_instances_file_dir, is_classic=False, num_iter=1,
-                               currline_path=alternative_solve_curr_line_path)
+    load_and_alternative_solve(hard_instances_file_dir, is_classic=True, num_iter=10,
+                               currline_path=alternative_solve_curr_line_path, timeout=5)
+    load_and_alternative_solve(hard_instances_file_dir, is_classic=False, num_iter=10,
+                               currline_path=alternative_solve_curr_line_path, timeout=5)
 
     # run_experiment(False, full_iter=30, holes_iter=30,
     #                total_time_per_condition=5 * 60 * 10000000,

@@ -396,6 +396,7 @@ def plot_constraints_comparison(option_num: int, solver: str):
 
 if __name__ == '__main__':
     # dictionary of file paths to feed into `run_experiment`
+    TIME_OUT = 5
     dct = {"curr_line_path": 'curr_line.txt',
            "classic_full_path": '../store-sudoku/classic_full_sudokus.txt',
            "argyle_full_path": '../store-sudoku/argyle_full_sudokus.txt',
@@ -406,9 +407,9 @@ if __name__ == '__main__':
     hard_instances_file_dir = "hard_sudoku_instance-logFile/"
     alternative_solve_curr_line_path = "hard_sudoku_instance-logFile/curr_instance_line.txt"
     load_and_alternative_solve(hard_instances_file_dir, is_classic=True, num_iter=10,
-                               currline_path=alternative_solve_curr_line_path, timeout=5)
+                               currline_path=alternative_solve_curr_line_path, timeout=TIME_OUT)
     load_and_alternative_solve(hard_instances_file_dir, is_classic=False, num_iter=10,
-                               currline_path=alternative_solve_curr_line_path, timeout=5)
+                               currline_path=alternative_solve_curr_line_path, timeout=TIME_OUT)
 
     # run_experiment(False, full_iter=30, holes_iter=30,
     #                total_time_per_condition=5 * 60 * 10000000,

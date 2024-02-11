@@ -1,1 +1,1 @@
-{'classic': 90, 'argyle': 90, 'seed': 40}
+{'classic': 390, 'argyle': 8060, 'seed': 40}

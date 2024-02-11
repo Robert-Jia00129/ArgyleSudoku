@@ -48,7 +48,16 @@ dict = dict(
     "try_Val": ttry_Val, # int
     "is_sat": tis_sat # bool
 },
-constraint1:{
+constraint1:{ 
+# e.g. (True,True,True,True,True)
+    "smt_path": "/path/to/smt_file_1.smt",
+    "z3": (time, did_time_out "answer sat unsat timeout"),
+    "cvc5": (time, did_time_out),
+    ...
+    "other_solver": (time, did_time_out)
+},
+constraint2:{
+# e.g. (True,False,True,True,True)
     "smt_path": "/path/to/smt_file_1.smt",
     "z3": (time, did_time_out "answer sat unsat timeout"),
     "cvc5": (time, did_time_out),

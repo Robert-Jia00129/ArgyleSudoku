@@ -7,6 +7,8 @@ from typing import Tuple, List, Hashable
 from itertools import islice
 import random
 
+from matplotlib import pyplot as plt
+
 import Sudoku
 
 FULL_CONDITIONS = [(classic, distinct, percol, nonum, prefill)  # must be hashable
@@ -231,8 +233,23 @@ def solve_with_cvc5(smt_log_file_path: str, time_out: int) -> (int, int, str):
     return (end_time - start_time, did_timeout, ans)
 
 
-def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, num_iter: int,
-                               currline_path="curr_instance_line.txt", timeout=5):
+def solve_with_solver(solver_name: str, smt_file_path, time_out=5) -> (int, int, str):
+    """
+    solve an smt file with particular solver
+    :param solver_name:
+    :param smt_file_path:
+    :return: (time, did_time_out)
+    """
+    if solver_name == 'z3':
+        return solve_with_z3(smt_file_path, time_out=time_out)
+    elif solver_name == 'cvc5':
+        return solve_with_cvc5(smt_file_path, time_out=time_out)
+    # Add more elif blocks for other solvers
+    raise ValueError(f"Unknown solver: {solver_name}, please implement the corresponding code")
+
+
+def load_and_alternative_solve_hard(hard_instances_file_dir: str, is_classic: bool, num_iter: int,
+                                    currline_path="curr_instance_line.txt", timeout=5):
     """
     Writes a dictionary with {problem: , cond_1_time: , cond_2_time: cond_3_time: cond_4_time: ...}
     Condition[0] MUST be TRUE when classic and FALSE when argyle
@@ -247,7 +264,7 @@ def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, n
         hard_instances_file_path = hard_instances_file_dir + "argyle_instance.txt"
         store_comparison_file_path = hard_instances_file_dir + "argyle_time.txt"
 
-    with open(hard_instances_file_path, 'r+') as fr:  # this line not really necessary, but I'm afraid to remove
+    with open(hard_instances_file_path, 'r+') as fr:
         with open(currline_path, "r") as ftempr:
             argyle_and_classic_time_dict = ftempr.readline()
             if argyle_and_classic_time_dict == '':
@@ -265,7 +282,7 @@ def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, n
         for _ in range(num_iter):
             line_to_solve = fr.readline().strip()
             if not line_to_solve:
-                print("Not enough hard instances for experiment\n\n\n\n\n\n")
+                print("Not enough hard instances for experiment/Encountered an empty new line\n\n\n")
             store_result_dict = {}
             try:
                 tgrid, tcondition, tindex, ttry_Val, tis_sat = line_to_solve.split("\t")
@@ -310,88 +327,7 @@ def load_and_alternative_solve(hard_instances_file_dir: str, is_classic: bool, n
             fw.write(str(argyle_and_classic_time_dict))
 
 
-def solve_with_solver(solver_name: str, smt_file_path, time_out=5) -> (int, int, str):
-    """
-    solve an smt file with particular solver
-    :param solver_name:
-    :param smt_file_path:
-    :return: (time, did_time_out)
-    """
-    if solver_name == 'z3':
-        return solve_with_z3(smt_file_path, time_out=time_out)
-    elif solver_name == 'cvc5':
-        return solve_with_cvc5(smt_file_path, time_out=time_out)
-    # Add more elif blocks for other solvers
-    raise ValueError(f"Unknown solver: {solver_name}, please implement the corresponding code")
 
-
-def plot_constraints_comparison(option_num: int, solver: str):
-    """
-    Plots the comparison between option_num == True and option_num == False
-    :param option_num: available options: ['classic', 'distinct', 'per_col', 'no_num', 'prefill']
-    :param solver: specify which solver to use. if the string "ALL" is provided, just simply compare the two
-     constraints with ALL solver time
-    :return:
-    """
-    # previous outdated function, do not run. just to give an overview of how the constraints are compared
-    def plot_condition_comparison(df, single_condition):
-        # single_condition = 'distinct'
-        def create_identifier(row, df_columns, single_condition):
-            excluded_cols = ['average time',
-                             'number of rows', 'percentage with any timeouts',
-                             'avg nr of timeouts', 'full/holes ratio', single_condition]
-            values = []
-            for col in df_columns:
-                if col not in excluded_cols:
-                    values.append(str(row[col]))
-            return '_'.join(values)
-
-        df['config_id'] = df.apply(lambda row: create_identifier(row, df.columns, single_condition), axis=1)
-        true_times = df[df[single_condition] == True]
-        false_times = df[df[single_condition] == False]
-
-        # merge dataframe so same conditions (except for single_condition) appears on the same row
-        merged_times = pd.merge(true_times, false_times, on='config_id',
-                                suffixes=('_' + single_condition, '_not_' + single_condition))
-        # Create a new figure with 1 row and 2 columns of subplots
-        fig, axs = plt.subplots(1, 2, figsize=(12, 6))  # Adjust figsize as per your requirement
-        # Extract rows where 'generating full grid' is True and False respectively for distinct and pbeq
-        full_true = merged_times[(merged_times['generating full grid_' + single_condition] == True) & (
-                    merged_times['generating full grid_not_' + single_condition] == True)]
-        full_false = merged_times[(merged_times['generating full grid_' + single_condition] == False) & (
-                    merged_times['generating full grid_not_' + single_condition] == False)]
-
-        # Subplot 1: Generating Full Grid
-        axs[0].scatter(full_true['average time_' + single_condition], full_true['average time_not_' + single_condition],
-                       alpha=0.5)
-        axs[0].set_title('Generating Full Grid')
-        axs[0].set_xlabel(f'Time using {single_condition}')
-        axs[0].set_ylabel(f'Time using not {single_condition}')
-        axs[0].grid(True)
-        min_val_0 = min(min(full_true['average time_' + single_condition]),
-                        min(full_true['average time_not_' + single_condition]))
-        max_val_0 = max(max(full_true['average time_' + single_condition]),
-                        max(full_true['average time_not_' + single_condition]))
-        axs[0].plot([min_val_0, max_val_0], [min_val_0, max_val_0], color='red', linestyle='--', lw=2)
-
-        # Subplot 2: Not Generating Full Grid
-        axs[1].scatter(full_false['average time_' + single_condition],
-                       full_false['average time_not_' + single_condition], alpha=0.5, color='green')
-        axs[1].set_title('Generating Grid With Holes')
-        axs[1].set_xlabel(f'Time using {single_condition}')
-        axs[1].set_ylabel(f'Time using not {single_condition}')
-        axs[1].grid(True)
-        min_val_1 = min(min(full_false['average time_' + single_condition]),
-                        min(full_false['average time_not_' + single_condition]))
-        max_val_1 = max(max(full_false['average time_' + single_condition]),
-                        max(full_false['average time_not_' + single_condition]))
-        axs[1].plot([min_val_1, max_val_1], [min_val_1, max_val_1], color='red', linestyle='--', lw=2)
-
-        # Adjust spacing between subplots
-        plt.tight_layout(pad=4.0)
-
-        # Display the plots
-        plt.show()
 
 
 if __name__ == '__main__':
@@ -406,10 +342,10 @@ if __name__ == '__main__':
 
     hard_instances_file_dir = "hard_sudoku_instance-logFile/"
     alternative_solve_curr_line_path = "hard_sudoku_instance-logFile/curr_instance_line.txt"
-    load_and_alternative_solve(hard_instances_file_dir, is_classic=True, num_iter=10,
-                               currline_path=alternative_solve_curr_line_path, timeout=TIME_OUT)
-    load_and_alternative_solve(hard_instances_file_dir, is_classic=False, num_iter=10,
-                               currline_path=alternative_solve_curr_line_path, timeout=TIME_OUT)
+    # load_and_alternative_solve(hard_instances_file_dir, is_classic=True, num_iter=10,
+    #                            currline_path=alternative_solve_curr_line_path, timeout=TIME_OUT)
+    load_and_alternative_solve_hard(hard_instances_file_dir, is_classic=False, num_iter=1000,
+                                    currline_path=alternative_solve_curr_line_path, timeout=TIME_OUT)
 
     # run_experiment(False, full_iter=30, holes_iter=30,
     #                total_time_per_condition=5 * 60 * 10000000,

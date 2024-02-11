@@ -193,7 +193,7 @@ class Sudoku:
         :return:
         """
         s_new = Sudoku([c for r in self._nums for c in r], self._classic, False,
-                       self._per_col, not self._no_num, self._prefill)
+                       self._per_col, True, self._prefill)
         s_new._timeout = 0
         s_new._solver.set("timeout", 0)
         s_new.load_constraints()
@@ -479,7 +479,7 @@ def generate_puzzle(solved_sudokus, classic: bool, distinct: bool, per_col: bool
         penalty = 0
         for i in range(9):
             for j in range(9):
-                s = Sudoku(puzzle.reshape(-1), classic, distinct, per_col, no_num, prefill, log_path=log_path)
+                s = Sudoku(puzzle.reshape(-1), classic, distinct, per_col, no_num, prefill, hard_smt_logPath=log_path)
                 removable, temp_penalty = s.removable(i, j, puzzle[i][j])
                 if removable:
                     puzzle[i][j] = 0
@@ -516,7 +516,7 @@ def gen_solve_sudoku(classic: bool, distinct: bool, per_col: bool, no_num: bool,
     for i in range(num_iter):
         empty_list = [0 for i in range(9) for j in range(9)]
         st = time.time()
-        s = Sudoku(empty_list, classic, distinct, per_col, no_num, prefill, log_path=log_path)
+        s = Sudoku(empty_list, classic, distinct, per_col, no_num, prefill, hard_smt_logPath=log_path)
         nums, penalty = s.gen_solved_sudoku()
         et = time.time()
         store_solved_sudoku.append(nums)
@@ -637,12 +637,12 @@ def generate_smt(grid: str, constraint: list, index: (int, int), try_val: int, i
 if __name__ == "__main__":
     # Test classic case
     # classic, distinct, per_col, no_num
-    solve_time, solve_penalty, gen_time, gen_penalty = gen_solve_sudoku(False, True, True,
-                                                                        False, True, num_iter=100,
-                                                                        log_path='DataCollection/')
+    # solve_time, solve_penalty, gen_time, gen_penalty = gen_solve_sudoku(False, True, True,
+    #                                                                     False, True, num_iter=100,
+    #                                                                     log_path='DataCollection/')
 
-    # print(gen_solve_sudoku(classic=False, distinct=True, per_col=True, no_num=False, prefill=True, num_iter=2,
-    #                        log_path="DataCollection/"))
+    print(gen_solve_sudoku(classic=True, distinct=False, per_col=True, no_num=False, prefill=True, num_iter=2,
+                           ))
 
     # generate_hard_sudokus(classic=False, distinct=True, per_col=True, no_num=False,log_path="DataCollection/")
 
@@ -652,4 +652,12 @@ if __name__ == "__main__":
 
     # store_holes = np.load('solved_sudoku.npy')
     # ret_holes_time = generate_puzzle(store_holes, True, True, False, False)
+
     print("Process finished")
+# green
+# rerun
+# diagonal
+# timeout in one but not another sqaure grid
+# random seed
+# full sudoku grid same
+# fill when grid is almost full

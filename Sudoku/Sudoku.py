@@ -31,7 +31,8 @@ class Sudoku:
     _prefill = False
 
     def __init__(self, sudoku_array: List[int], classic: bool, distinct: bool, per_col: bool, no_num: bool,
-                 prefill: bool, hard_smt_logPath="", hard_sudoku_logPath="", print_progress=False, timeout: int = 5000):
+                 prefill: bool, seed, hard_smt_logPath="", hard_sudoku_logPath="", print_progress=False,
+                 ):
         """
         Only write a logFile when a path is provided
         Type hint for List[int] might not work
@@ -52,7 +53,7 @@ class Sudoku:
         """
         # a 1-D sudoku_array
         self._solver = z3.Solver()
-        self._timeout = timeout
+        self._timeout = 5000
         self._incTimeOut = self._timeout
         self._solver.set("timeout", self._timeout)
         # self._solver.from_file("fileName")
@@ -68,6 +69,12 @@ class Sudoku:
         self.condition_tpl = (self._classic, self._distinct, self._per_col, self._no_num, self._prefill)
         self._print_progress = print_progress
         self._bool_timeout = False
+        self._seed = seed
+        if seed == 0:
+            print("WARNING: NO random seed was set for solver class. "
+                  "This would cause experiments to be unreliable when compared in across constraints."
+                  "If this is intentional, please ignore .")
+        random.seed(seed)
 
         # Create variables
         if not no_num:
@@ -193,7 +200,7 @@ class Sudoku:
         :return:
         """
         s_new = Sudoku([c for r in self._nums for c in r], self._classic, False,
-                       self._per_col, True, self._prefill)
+                       self._per_col, True, self._prefill,seed=4321) # @sj*** Shoud this be random???
         s_new._timeout = 0
         s_new._solver.set("timeout", 0)
         s_new.load_constraints()
@@ -457,7 +464,7 @@ class Sudoku:
 
 
 
-def generate_puzzle(solved_sudokus, classic: bool, distinct: bool, per_col: bool, no_num: bool, prefill: bool,
+def generate_puzzle(solved_sudokus, classic: bool, distinct: bool, per_col: bool, no_num: bool, prefill: bool, seed,
                     log_path="", print_progress=False):
     """
     Generates puzzle with holes
@@ -479,7 +486,7 @@ def generate_puzzle(solved_sudokus, classic: bool, distinct: bool, per_col: bool
         penalty = 0
         for i in range(9):
             for j in range(9):
-                s = Sudoku(puzzle.reshape(-1), classic, distinct, per_col, no_num, prefill, hard_smt_logPath=log_path)
+                s = Sudoku(puzzle.reshape(-1), classic, distinct, per_col, no_num, prefill, hard_smt_logPath=log_path, seed=seed)
                 removable, temp_penalty = s.removable(i, j, puzzle[i][j])
                 if removable:
                     puzzle[i][j] = 0
@@ -497,7 +504,7 @@ def generate_puzzle(solved_sudokus, classic: bool, distinct: bool, per_col: bool
     return time_rec, penalty_lst
 
 
-def gen_solve_sudoku(classic: bool, distinct: bool, per_col: bool, no_num: bool, prefill: bool, num_iter=1,
+def gen_solve_sudoku(classic: bool, distinct: bool, per_col: bool, no_num: bool, prefill: bool, seed, num_iter=1,
                      log_path="logFile"):
     '''
     First creates a solved sudoku, then generate a sudoku puzzle. returns time for each
@@ -516,7 +523,7 @@ def gen_solve_sudoku(classic: bool, distinct: bool, per_col: bool, no_num: bool,
     for i in range(num_iter):
         empty_list = [0 for i in range(9) for j in range(9)]
         st = time.time()
-        s = Sudoku(empty_list, classic, distinct, per_col, no_num, prefill, hard_smt_logPath=log_path)
+        s = Sudoku(empty_list, classic, distinct, per_col, no_num, prefill, hard_smt_logPath=log_path, seed=seed)
         nums, penalty = s.gen_solved_sudoku()
         et = time.time()
         store_solved_sudoku.append(nums)
@@ -526,7 +533,7 @@ def gen_solve_sudoku(classic: bool, distinct: bool, per_col: bool, no_num: bool,
     store_holes = deepcopy(store_solved_sudoku)
     store_holes = np.array(store_holes)
     print("Start generating puzzles")
-    ret_holes_time, holes_penalty = generate_puzzle(store_holes, classic, distinct, per_col, no_num, prefill)
+    ret_holes_time, holes_penalty = generate_puzzle(store_holes, classic, distinct, per_col, no_num, prefill,seed=seed)
     assert len(ret_solve_time) == len(solve_penalty), "error in gen_solve_sudoku"
     return ret_solve_time, solve_penalty, ret_holes_time, holes_penalty
 
@@ -539,7 +546,7 @@ def append_list_to_file(file_path, lst: list[int]):
         f.write(str(lst) + "\n")
 
 
-def gen_full_sudoku(*constraints, hard_smt_logPath='smt-logFiles/', store_sudoku_path="", hard_sudoku_logPath="") -> (
+def gen_full_sudoku(*constraints, seed, hard_smt_logPath='smt-logFiles/', store_sudoku_path="", hard_sudoku_logPath="") -> (
 float, int):
     """
     append generated full sudoku to the designated path as a string
@@ -551,7 +558,7 @@ float, int):
     """
     empty_list = [0 for i in range(9) for j in range(9)]
     st = time.time()
-    s = Sudoku(empty_list, *constraints, hard_smt_logPath=hard_smt_logPath, hard_sudoku_logPath=hard_sudoku_logPath)
+    s = Sudoku(empty_list, *constraints, hard_smt_logPath=hard_smt_logPath, hard_sudoku_logPath=hard_sudoku_logPath, seed=seed)
     nums, penalty = s.gen_solved_sudoku()
     et = time.time()
     # Write to file
@@ -559,7 +566,7 @@ float, int):
     return et - st, penalty
 
 
-def gen_holes_sudoku(solved_sudoku: list[int], *constraints, hard_smt_logPath='smt-logFiles/', store_sudoku_path="",
+def gen_holes_sudoku(solved_sudoku: list[int], *constraints, seed, hard_smt_logPath='smt-logFiles/', store_sudoku_path="",
                      hard_sudoku_logPath="", print_progress=False):
     """
     Reads sudokus as a string from store_sudoku_path
@@ -577,7 +584,7 @@ def gen_holes_sudoku(solved_sudoku: list[int], *constraints, hard_smt_logPath='s
     for i in range(9):
         for j in range(9):
             s = Sudoku(solved_sudoku, *constraints, hard_smt_logPath=hard_smt_logPath,
-                       hard_sudoku_logPath=hard_sudoku_logPath)
+                       hard_sudoku_logPath=hard_sudoku_logPath,seed=seed)
             removable, temp_penalty = s.removable(i, j, solved_sudoku[i * 9 + j])
             if removable:
                 solved_sudoku[i * 9 + j] = 0
@@ -594,7 +601,7 @@ def gen_holes_sudoku(solved_sudoku: list[int], *constraints, hard_smt_logPath='s
     return time_rec, penalty
 
 
-def check_condition_index(sudoku_grid: list[int], condition, index: (int, int), try_val: int, is_sat) -> (int, int):
+def check_condition_index(sudoku_grid: list[int], condition, index: (int, int), try_val: int, is_sat: str, seed: float) -> (int, int):
     """
 
     :param sudoku_grid:
@@ -604,7 +611,7 @@ def check_condition_index(sudoku_grid: list[int], condition, index: (int, int), 
     :param is_sat:
     :return: (time,penalty)
     """
-    s = Sudoku(sudoku_grid, *condition)
+    s = Sudoku(sudoku_grid, *condition, seed=seed)
     s.load_constraints()
     start = time.time()
     penalty = 0
@@ -628,7 +635,7 @@ def generate_smt(grid: str, constraint: list, index: (int, int), try_val: int, i
     :param smt_dir: Directory to store the generated SMT file.
     :return: The path to the generated SMT file.
     """
-    solver = Sudoku(list(map(int,(grid))),*constraint)
+    solver = Sudoku(list(map(int,(grid))),*constraint,seed=seed)
     file_path = solver.generate_smt_with_additional_constraint(index,try_val,is_sat,smt_dir)
 
     return file_path
@@ -641,7 +648,7 @@ if __name__ == "__main__":
     #                                                                     False, True, num_iter=100,
     #                                                                     log_path='DataCollection/')
 
-    print(gen_solve_sudoku(classic=True, distinct=False, per_col=True, no_num=False, prefill=True, num_iter=2,
+    print(gen_solve_sudoku(classic=True, distinct=False, per_col=True, no_num=False, prefill=True, num_iter=2,seed=4321
                            ))
 
     # generate_hard_sudokus(classic=False, distinct=True, per_col=True, no_num=False,log_path="DataCollection/")
@@ -654,10 +661,29 @@ if __name__ == "__main__":
     # ret_holes_time = generate_puzzle(store_holes, True, True, False, False)
 
     print("Process finished")
-# green
-# rerun
+
+
+# rerun experiments
+    # deleted all the files, now have to
+        # find the function to run experiments
+        # run experiments
+        # plot the results again to see if the same bug occurs again
 # diagonal
+
 # timeout in one but not another sqaure grid
-# random seed
-# full sudoku grid same
+    # remain the graph that is within [0,5]*[0,5]
+    # make a 2*2 table recording how many instances are in each quadrant
+
+
+# fix the diagonal bug first, if not, find which file it comes from
+# random seed to ensure the full sudoku grids and holes
+# are generated in the same way accross different constraints
+    # set a specific random seed
+    # clear all experiments,
+    # run experiemtns again
+#
+    #
 # fill when grid is almost full
+    # check the time to fill the grid when it's almost full
+
+# helper to rerun experiment

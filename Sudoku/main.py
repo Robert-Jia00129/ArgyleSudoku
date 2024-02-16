@@ -63,34 +63,53 @@ def to_bool(condition_str: str) -> list[bool]:
     pass
 
 
-def run_experiment(single_condition: bool, *args,
-                   full_iter: int = 0, holes_iter: int = 0, total_time_per_condition=5 * 60, start_condition=[],
-                   end_condition=[],
-                   start_from_next=False,
-                   curr_line_path: str = 'curr_line.txt',
-                   classic_full_path: str = '../store-sudoku/classic_full_sudokus.txt',
-                   argyle_full_path: str = '../store-sudoku/argyle_full_sudokus.txt',
-                   classic_holes_path: str = '../store-sudoku/classic_holes_sudokus.txt',
-                   argyle_holes_path: str = '../store-sudoku/argyle_holes_sudokus.txt'):
+def run_experiment_once(single_condition: bool, *args, total_time_per_condition=5 * 60,
+                        particular_instance_timeout=5000,
+                        start_condition: List[bool] =[],
+                        end_condition=[], start_from_next=False, curr_line_path: str = 'curr_line.txt',
+                        classic_full_path: str = '../store-sudoku/classic_full_sudokus.txt',
+                        argyle_full_path: str = '../store-sudoku/argyle_full_sudokus.txt',
+                        classic_holes_path: str = '../store-sudoku/classic_holes_sudokus.txt',
+                        argyle_holes_path: str = '../store-sudoku/argyle_holes_sudokus.txt'):
+    """
+
+    :param single_condition:
+    :param args:
+    :param full_iter:
+    :param holes_iter:
+    :param total_time_per_condition:
+    :param start_condition:
+    :param end_condition:
+    :param start_from_next:
+    :param curr_line_path: paths to
+    :param classic_full_path:
+    :param argyle_full_path:
+    :param classic_holes_path:
+    :param argyle_holes_path:
+    :return:
+    """
+    full_iter = 1
+    holes_iter = 1
     try:
         with open(curr_line_path, 'r') as f:
             curr_line = eval(f.readline())
     except IOError:
         curr_line = {}  # Keep track of which full sudoku to continue_reading with
-
     total_solve = {}
     if single_condition:
         conditions = [start_condition]
     else:
-        conditions = [[classic, distinct, percol, nonum, prefill]
-                      for classic in (True, False)
-                      for distinct in (True, False)
-                      for percol in (True, False)
-                      for nonum in (True, False) if not (distinct and nonum)
-                      for prefill in (True, False)]
+        conditions = FULL_CONDITIONS
+        # conditions = [[classic, distinct, percol, nonum, prefill]
+        #               for classic in (True, False)
+        #               for distinct in (True, False)
+        #               for percol in (True, False)
+        #               for nonum in (True, False) if not (distinct and nonum)
+        #               for prefill in (True, False)]
         if start_condition:
-            conditions = conditions[conditions.index(start_condition) + start_from_next:]
+            conditions = conditions[conditions.index(tuple(start_condition)) + start_from_next:]
     if full_iter > 0:
+        seed = time.time()
         for ele in conditions:
             exceed_time_limit = False
             # full_sudoku_path = '../store-sudoku/' + ''.join(condition) + 'full_sudokus.txt'
@@ -115,7 +134,7 @@ def run_experiment(single_condition: bool, *args,
                     break
                 full_time, full_penalty = Sudoku.gen_full_sudoku(*ele, hard_smt_logPath='smt-logFiles/',
                                                                  hard_sudoku_logPath=hard_sudoku_path,
-                                                                 store_sudoku_path=full_sudoku_path)
+                                                                 store_sudoku_path=full_sudoku_path, seed=seed)
                 total_solve[condition_name] += full_time
                 with open('../time-record/' + condition_name + '.txt',
                           'a') as f:  # if error, create ../time-record directory
@@ -123,6 +142,7 @@ def run_experiment(single_condition: bool, *args,
             if exceed_time_limit:
                 print(f'{full_sudoku_path} {ele} exceeded time limit when generating full_grid')
     if holes_iter > 0:
+        seed = time.time()
         for ele in conditions:
             enough_sudoku = True
             if ele[0]:
@@ -152,7 +172,7 @@ def run_experiment(single_condition: bool, *args,
                     holes_time, holes_penalty = Sudoku.gen_holes_sudoku(eval(sudoku_lst), *ele,
                                                                         hard_smt_logPath='smt-logFiles/',
                                                                         hard_sudoku_logPath=hard_sudoku_path,
-                                                                        store_sudoku_path=holes_sudoku_path)
+                                                                        store_sudoku_path=holes_sudoku_path, seed=seed)
                     print(f'\tTime taken: {holes_time}')
                     total_solve[condition_name] += holes_time
                     with open('../time-record/' + condition_name + '.txt', 'a+') as f_holes:
@@ -327,9 +347,6 @@ def load_and_alternative_solve_hard(hard_instances_file_dir: str, is_classic: bo
             fw.write(str(argyle_and_classic_time_dict))
 
 
-
-
-
 if __name__ == '__main__':
     # dictionary of file paths to feed into `run_experiment`
     TIME_OUT = 5
@@ -338,19 +355,21 @@ if __name__ == '__main__':
            "argyle_full_path": '../store-sudoku/argyle_full_sudokus.txt',
            "classic_holes_path": '../store-sudoku/classic_holes_sudokus.txt',
            "argyle_holes_path": "../store-sudoku/argyle_holes_sudokus.txt"}
-    # Left off with argyle-distinct-inorder-is_num-no_prefill-full_timeTotal
 
-    hard_instances_file_dir = "hard_sudoku_instance-logFile/"
-    alternative_solve_curr_line_path = "hard_sudoku_instance-logFile/curr_instance_line.txt"
-    # load_and_alternative_solve(hard_instances_file_dir, is_classic=True, num_iter=10,
-    #                            currline_path=alternative_solve_curr_line_path, timeout=TIME_OUT)
-    load_and_alternative_solve_hard(hard_instances_file_dir, is_classic=False, num_iter=1000,
-                                    currline_path=alternative_solve_curr_line_path, timeout=TIME_OUT)
-
-    # run_experiment(False, full_iter=30, holes_iter=30,
-    #                total_time_per_condition=5 * 60 * 10000000,
-    #                start_condition=[True, True, False, False, False],
-    #                start_from_next=True)
+    # # Left off with argyle-distinct-inorder-is_num-no_prefill-full_timeTotal
+    #
+    # hard_instances_file_dir = "hard_sudoku_instance-logFile/"
+    # alternative_solve_curr_line_path = "hard_sudoku_instance-logFile/curr_instance_line.txt"
+    # # load_and_alternative_solve(hard_instances_file_dir, is_classic=True, num_iter=10,
+    # #                            currline_path=alternative_solve_curr_line_path, timeout=TIME_OUT)
+    # load_and_alternative_solve_hard(hard_instances_file_dir, is_classic=False, num_iter=1000,
+    #                                 currline_path=alternative_solve_curr_line_path, timeout=TIME_OUT)
+    #
+    for i in range(2):
+        run_experiment_once(False,
+                            total_time_per_condition=int(1e20), # don't care about maximum cap for specific conditions
+                            start_condition=[True, True, False, False, False],
+                            start_from_next=True)
     # run_experiment(single_condition=False, full_iter=20, holes_iter=20,
     #                total_time_per_condition=1 * 60 * 1000)
     # run_experiment(True, [False, False, True, True, True], run_full=True, run_holes=False, full_iter=1000,

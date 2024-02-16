@@ -8,7 +8,7 @@ This project uses python z3-solver to solve classic sudokus and argyle sudokus u
 
 `Sudoku.py`: Contains all functionalities of building sudoku with various constraints, logging sudoku instances to files in string format and smt format, 
 
-`currline.txt`: 
+`currline.txt`: stores the which line of the full sudokus file should the solver generating sudoku holes start loading from and solving when calling `run_experiment`
 
 `hard_sudoku_instance-logFile/`: Contains the hard sudoku instances in string format. 
 

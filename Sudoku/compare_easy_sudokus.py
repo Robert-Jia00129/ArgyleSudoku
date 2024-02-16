@@ -62,7 +62,7 @@ def plot_comparison_for_constraint_extended_range(files_directory, constraint_a=
 
     plt.figure(figsize=(10, 6))
     if x_times_full and y_times_full:
-        plt.scatter(x_times_full, y_times_full, color='yellow', alpha=0.5, label='Full Time')
+        plt.scatter(x_times_full, y_times_full, color='green', alpha=0.5, label='Full Time')
     if x_times_holes and y_times_holes:
         plt.scatter(x_times_holes, y_times_holes, color='blue', alpha=0.5, label='Holes Time')
     plt.plot([0, time_cap], [0, time_cap], 'r--')  # Line y=x for reference
@@ -117,7 +117,7 @@ def plot_comparison_for_constraint_limited_range(files_directory, constraint_a='
 
     plt.figure(figsize=(10, 6))
     if x_times_full and y_times_full:
-        plt.scatter(x_times_full, y_times_full, color='yellow', alpha=0.5, label='Full Time')
+        plt.scatter(x_times_full, y_times_full, color='green', alpha=0.5, label='Full Time')
     if x_times_holes and y_times_holes:
         plt.scatter(x_times_holes, y_times_holes, color='blue', alpha=0.5, label='Holes Time')
     plt.plot([0, time_cap], [0, time_cap], 'r--')  # Line y=x for reference

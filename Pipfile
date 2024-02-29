@@ -11,6 +11,9 @@ display = "*"
 pandas = "*"
 jupyter = "*"
 cvc5 = "*"
+seaborn = "*"
+ninja = "*"
+pysmt = "*"
 
 [dev-packages]
 

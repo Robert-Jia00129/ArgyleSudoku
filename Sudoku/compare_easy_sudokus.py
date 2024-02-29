@@ -1,139 +1,119 @@
+# time_analysis.py
 import os
 import matplotlib.pyplot as plt
 
-
 def read_time_from_line(file_path, line_num):
-    """Read a specific line from a file and return the time value."""
+    """Read a specific line from a file and return the time value and timeout status."""
     with open(file_path, 'r') as file:
         for i, line in enumerate(file):
             if i == line_num:
-                return float(line.split(',')[0])
-    return None
+                time_taken, timeout_status = line.strip().split(',')
+                return float(time_taken), timeout_status == '1'
+    return None, False
 
 
-def find_matching_file(base_file, files, target_constraint):
-    """Find the file name that matches the base file except for a specific constraint."""
-    base_parts = base_file.split('-')
-    for file in files:
-        file_parts = file.split('-')
-        if len(base_parts) == len(file_parts) and all(
-                bp == fp or bp in target_constraint for bp, fp in zip(base_parts, file_parts)):
-            return file
-    return None
+def escape_latex(s):
+    """Escapes LaTeX special characters in a given string."""
+    return s.replace('#', '\\#').replace('%', '\\%').replace('&', '\\&')
 
 
-def plot_comparison_for_constraint_extended_range(files_directory, constraint_a='distinct', constraint_b='PbEq',
-                                                  time_cap=200):
+def generate_latex(only_constraint_false_timeout, both_constraint_timeout,
+                   both_no_timeout, only_constraint_true_timeout,
+                   constraint_true, constraint_false):
+    # Escape special LaTeX characters in constraint names
+    constraint_true = constraint_true.replace('_', '\\_')
+    constraint_false = constraint_false.replace('_', '\\_')
+
+    # Format numbers as percentages with two decimal places
+    only_constraint_false_timeout = f"{only_constraint_false_timeout * 100:.2f}\\%"
+    both_constraint_timeout = f"{both_constraint_timeout * 100:.2f}\\%"
+    both_no_timeout = f"{both_no_timeout * 100:.2f}\\%"
+    only_constraint_true_timeout = f"{only_constraint_true_timeout * 100:.2f}\\%"
+
+    latex_code: str = f"""
+\\begin{{table}}[ht]
+\\centering
+\\begin{{tabular}}{{|m{{1.5cm}}|c|c|c|}}
+\\hline
+\\multicolumn{{2}}{{|c|}}{{}} & \\multicolumn{{2}}{{c|}}{{{constraint_true}}} \\\\ \\cline{{3-4}} 
+\\multicolumn{{2}}{{|c|}}{{}} & No Timeout & Timeout \\\\ \\hline
+\\multirow{{2}}{{*}}{{{constraint_false}}} & Timeout & {only_constraint_false_timeout} & {both_constraint_timeout} \\\\ \\cline{{2-4}} 
+ & No Timeout & {both_no_timeout} & {only_constraint_true_timeout} \\\\ \\hline
+\\end{{tabular}}
+\\caption{{Comparison of timeout occurrences under different constraints}}
+\\end{{table}}
+"""
+    return latex_code
+
+
+def plot_comparison_for_constraint(files_directory, constraint_true='distinct', constraint_false='PbEq',
+                                   time_cap=5):
     all_files = os.listdir(files_directory)
-    x_times_full = []
-    y_times_full = []
-    x_times_holes = []
-    y_times_holes = []
+    times_full_true = []
+    times_full_false = []
+    times_holes_true = []
+    times_holes_false = []
+    timeout_only_false = 0
+    timeout_both = 0
+    never_timed_out = 0
+    timeout_only_true = 0
 
     for file_name in all_files:
-        if constraint_a in file_name or constraint_b in file_name:
-            matching_file = find_matching_file(file_name.replace(constraint_a, constraint_b), all_files,
-                                               [constraint_a, constraint_b])
-            if matching_file:
-                base_file_path = os.path.join(files_directory, file_name)
-                matching_file_path = os.path.join(files_directory, matching_file)
+        if constraint_true in file_name:
+            constraint_false_file = file_name.replace(constraint_true, constraint_false)
+            constraint_false_file_path = os.path.join(files_directory, constraint_false_file)
+            if not os.path.isfile(constraint_false_file_path):
+                continue
+            constraint_true_file_path = os.path.join(files_directory, file_name)
+            time_type = 'full' if 'full_time' in file_name else 'holes'
 
-                base_lines = sum(1 for line in open(base_file_path))
-                match_lines = sum(1 for line in open(matching_file_path))
-                if base_lines != match_lines:
-                    print(f"Inconsistent line numbers: {file_name} and {matching_file}")
+            with open(constraint_true_file_path, 'r') as true_file, open(constraint_false_file_path, 'r') as false_file:
+                for i, (true_line, false_line) in enumerate(zip(true_file, false_file)):
+                    true_time, true_timeout = read_time_from_line(constraint_true_file_path, i)
+                    false_time, false_timeout = read_time_from_line(constraint_false_file_path, i)
 
-                min_lines = min(base_lines, match_lines)
-                time_type = 'full' if 'full_time' in file_name else 'holes'
+                    true_time = min(true_time, time_cap)
+                    false_time = min(false_time, time_cap)
 
-                with open(base_file_path, 'r') as base_file, open(matching_file_path, 'r') as match_file:
-                    for i, (base_line, match_line) in enumerate(zip(base_file, match_file)):
-                        if i >= min_lines:
-                            break
-                        base_time = min(float(base_line.split(',')[0]), time_cap)
-                        matching_time = min(float(match_line.split(',')[0]), time_cap)
+                    # Update timeout table
+                    if true_timeout and not false_timeout:
+                        timeout_only_false += 1
+                    elif not true_timeout and false_timeout:
+                        timeout_only_true += 1
+                    elif true_timeout and false_timeout:
+                        timeout_both += 1
+                    else:
+                        never_timed_out += 1
 
-                        if time_type == 'full':
-                            x_times_full.append(base_time)
-                            y_times_full.append(matching_time)
-                        else:
-                            x_times_holes.append(base_time)
-                            y_times_holes.append(matching_time)
+                    # Plot instances
+                    if time_type == 'full':
+                        times_full_true.append(true_time)
+                        times_full_false.append(false_time)
+                    else:
+                        times_holes_true.append(true_time)
+                        times_holes_false.append(false_time)
 
+    # Plotting
     plt.figure(figsize=(10, 6))
-    if x_times_full and y_times_full:
-        plt.scatter(x_times_full, y_times_full, color='green', alpha=0.5, label='Full Time')
-    if x_times_holes and y_times_holes:
-        plt.scatter(x_times_holes, y_times_holes, color='blue', alpha=0.5, label='Holes Time')
-    plt.plot([0, time_cap], [0, time_cap], 'r--')  # Line y=x for reference
+    plt.scatter(times_full_true, times_full_false, color='green', alpha=0.5, label='Full Time')
+    plt.scatter(times_holes_true, times_holes_false, color='blue', alpha=0.5, label='Holes Time')
+    plt.plot([0, time_cap], [0, time_cap], 'r--')
     plt.xlim(0, time_cap)
     plt.ylim(0, time_cap)
-    plt.xlabel(f'Times for {constraint_a} capped at {time_cap} seconds')
-    plt.ylabel(f'Times for {constraint_b} capped at {time_cap} seconds')
-    plt.title(f'Comparison of Times: {constraint_a} vs. {constraint_b} within [0, {time_cap}] seconds')
+    plt.xlabel(f'Times for {constraint_true} capped at {time_cap} seconds')
+    plt.ylabel(f'Times for {constraint_false} capped at {time_cap} seconds')
+    plt.title(f'Comparison of Times: {constraint_true} vs. {constraint_false} within [0, {time_cap}] seconds')
     plt.legend()
     plt.grid(True)
     plt.show()
+    timeout_lst_sum = sum([timeout_only_false, timeout_both, never_timed_out, timeout_only_true])
+    time_out_percentage_lst = [a/timeout_lst_sum for a in [timeout_only_false, timeout_both, never_timed_out, timeout_only_true]]
+    print(generate_latex(*time_out_percentage_lst, constraint_true, constraint_false))
+    return timeout_only_true, timeout_both, timeout_only_false, timeout_both
 
 
-
-def plot_comparison_for_constraint_limited_range(files_directory, constraint_a='distinct', constraint_b='PbEq',
-                                                 time_cap=25):
-    all_files = os.listdir(files_directory)
-    x_times_full = []
-    y_times_full = []
-    x_times_holes = []
-    y_times_holes = []
-
-    for file_name in all_files:
-        if constraint_a in file_name or constraint_b in file_name:
-            matching_file = find_matching_file(file_name.replace(constraint_a, constraint_b), all_files,
-                                               [constraint_a, constraint_b])
-            if matching_file:
-                base_file_path = os.path.join(files_directory, file_name)
-                matching_file_path = os.path.join(files_directory, matching_file)
-
-                base_lines = sum(1 for line in open(base_file_path))
-                match_lines = sum(1 for line in open(matching_file_path))
-                if base_lines != match_lines:
-                    print(f"Inconsistent line numbers: {file_name} and {matching_file}")
-
-                min_lines = min(base_lines, match_lines)
-                time_type = 'full' if 'full_time' in file_name else 'holes'
-
-                with open(base_file_path, 'r') as base_file, open(matching_file_path, 'r') as match_file:
-                    for i, (base_line, match_line) in enumerate(zip(base_file, match_file)):
-                        if i >= min_lines:
-                            break
-                        base_time = min(float(base_line.split(',')[0]), time_cap)
-                        matching_time = min(float(match_line.split(',')[0]), time_cap)
-
-                        if time_type == 'full':
-                            x_times_full.append(base_time)
-                            y_times_full.append(matching_time)
-                        else:
-                            x_times_holes.append(base_time)
-                            y_times_holes.append(matching_time)
-
-    plt.figure(figsize=(10, 6))
-    if x_times_full and y_times_full:
-        plt.scatter(x_times_full, y_times_full, color='green', alpha=0.5, label='Full Time')
-    if x_times_holes and y_times_holes:
-        plt.scatter(x_times_holes, y_times_holes, color='blue', alpha=0.5, label='Holes Time')
-    plt.plot([0, time_cap], [0, time_cap], 'r--')  # Line y=x for reference
-    plt.xlim(0, time_cap)
-    plt.ylim(0, time_cap)
-    plt.xlabel(f'Times for {constraint_a} capped at {time_cap} seconds')
-    plt.ylabel(f'Times for {constraint_b} capped at {time_cap} seconds')
-    plt.title(f'Comparison of Times: {constraint_a} vs. {constraint_b} within [0, {time_cap}] seconds')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-
-
-#  TODO: Haven't implemented cases where there are time outs but time less than 200, but would
-#   affect the general picture tho
-files_directory = '/Users/jiazhenghao/Desktop/CodingProjects/ArgyleSudoku/time-record'
-plot_comparison_for_constraint_extended_range(files_directory, 'distinct', 'PbEq')
-plot_comparison_for_constraint_limited_range(files_directory, 'distinct', 'PbEq')
+if __name__ == '__main__':
+    files_directory = '/Users/jiazhenghao/Desktop/CodingProjects/ArgyleSudoku/time-record'
+    # plot_comparison_for_constraint(files_directory, 'distinct', 'PbEq', time_cap=200)  # extended
+    plot_comparison_for_constraint(files_directory, 'is_num', 'is_bool',
+                                   time_cap=5)

@@ -109,6 +109,8 @@ def run_experiment_once(single_condition: bool, *args, total_time_per_condition=
         if start_condition:
             conditions = conditions[conditions.index(tuple(start_condition)) + start_from_next:]
     if full_iter > 0:
+        print(f'Generating full sudokus: \n'
+              f'{"-" * 24}Total Conditions: {len(conditions)}')
         seed = time.time()
         for ele in conditions:
             exceed_time_limit = False
@@ -123,8 +125,9 @@ def run_experiment_once(single_condition: bool, *args, total_time_per_condition=
             condition_name = to_str(ele) + 'full_time'
             condition_progress = f'{conditions.index(ele) + 1}/{len(conditions)}'
             for i in range(full_iter):
-                print(f'{i + 1}th iteration: Processing full sudoku {condition_name}'
-                      f'Total Progress: {condition_progress} of all conditions')
+                # print(f'{i + 1}th iteration: Processing full sudoku {condition_name}'
+                #       f'Total Progress: {condition_progress} of all conditions')
+                print('-',end="")
 
                 if condition_name not in total_solve:
                     total_solve[condition_name] = 0
@@ -141,6 +144,8 @@ def run_experiment_once(single_condition: bool, *args, total_time_per_condition=
                     f.write(f'{full_time},{full_penalty}\n')
             if exceed_time_limit:
                 print(f'{full_sudoku_path} {ele} exceeded time limit when generating full_grid')
+        print("")
+
     if holes_iter > 0:
         seed = time.time()
         for ele in conditions:
@@ -183,7 +188,8 @@ def run_experiment_once(single_condition: bool, *args, total_time_per_condition=
                 file_size = f.tell()
                 print(f'{curr_line[full_sudoku_path] / file_size * 100}% of the full grid for '
                       f'{full_sudoku_path.removesuffix("full_sudokus.txt")} {ele} is used')
-            print(f'{["NOT ", ""][enough_sudoku]}enough sudoku for this constraint')
+            if not enough_sudoku:
+                raise f"NOT engoufh sudoku when genearting{ele}"
 
             par_dir = Path(curr_line_path).parent
             if not os.path.exists(par_dir):
@@ -253,6 +259,34 @@ def solve_with_cvc5(smt_log_file_path: str, time_out: int) -> (int, int, str):
     return (end_time - start_time, did_timeout, ans)
 
 
+def solve_with_yices(smt_log_file_path: str, time_out: int) -> (int, int, str):
+    start_time = time.time()
+    did_timeout = False
+    try:
+        result = subprocess.run(["yices", smt_log_file_path, "--lang", "smt2"],
+                                capture_output=True, text=True, timeout=time_out)
+        combined_output = ((result.stdout if result.stdout is not None else "") +
+                           (result.stderr if result.stderr is not None else ""))  # capture all output
+    except subprocess.TimeoutExpired as exc:
+        did_timeout = True
+        combined_output = ((exc.stdout.decode('utf-8') if exc.stdout else "") +
+                           (exc.stderr.decode('utf-8') if exc.stderr else ""))  # capture all output
+    ans = "timeout"
+
+    end_time = time.time()
+
+    # TODO @sj this might not work. maybe some outputs are not in "sat" or "unsat"??
+    if not did_timeout:
+        if "unsat" in combined_output:
+            ans = "unsat"
+        elif "sat" in combined_output:
+            ans = "sat"
+        else:
+            ans = "unknown"
+    return (end_time - start_time, did_timeout, ans)
+
+
+
 def solve_with_solver(solver_name: str, smt_file_path, time_out=5) -> (int, int, str):
     """
     solve an smt file with particular solver
@@ -268,7 +302,7 @@ def solve_with_solver(solver_name: str, smt_file_path, time_out=5) -> (int, int,
     raise ValueError(f"Unknown solver: {solver_name}, please implement the corresponding code")
 
 
-def load_and_alternative_solve_hard(hard_instances_file_dir: str, is_classic: bool, num_iter: int,
+def load_and_alternative_solve_hard(hard_instances_file_dir: str, is_classic: bool, num_iter: int, seed,
                                     currline_path="curr_instance_line.txt", timeout=5):
     """
     Writes a dictionary with {problem: , cond_1_time: , cond_2_time: cond_3_time: cond_4_time: ...}
@@ -329,7 +363,7 @@ def load_and_alternative_solve_hard(hard_instances_file_dir: str, is_classic: bo
                                                                     store_result_dict["problem"]["index"],
                                                                     store_result_dict["problem"]["try_Val"],
                                                                     store_result_dict["problem"]["is_sat"],
-                                                                    smt_dir="smt-logFiles/")
+                                                                    smt_dir="smt-logFiles/",seed=seed)
                     store_result_dict[CorAcondition]["smt_path"] = single_condition_smt_path
                 else:
                     single_condition_smt_path = store_result_dict["smt_path"]
@@ -365,11 +399,10 @@ if __name__ == '__main__':
     # load_and_alternative_solve_hard(hard_instances_file_dir, is_classic=False, num_iter=1000,
     #                                 currline_path=alternative_solve_curr_line_path, timeout=TIME_OUT)
     #
-    for i in range(2):
+    for i in range(5):
         run_experiment_once(False,
                             total_time_per_condition=int(1e20), # don't care about maximum cap for specific conditions
-                            start_condition=[True, True, False, False, False],
-                            start_from_next=True)
+                            )
     # run_experiment(single_condition=False, full_iter=20, holes_iter=20,
     #                total_time_per_condition=1 * 60 * 1000)
     # run_experiment(True, [False, False, True, True, True], run_full=True, run_holes=False, full_iter=1000,
@@ -380,3 +413,13 @@ if __name__ == '__main__':
 # don't tell time limit
 # record timeout despite the output.
 # exceptions
+
+# find . -maxdepth 1 -type f
+# find . -maxdepth 1 -type f -exec truncate -s 0 {} \;
+
+
+# percentages of timeout
+# stack the time for each constraint together, and use percentages
+# arr in latex
+
+# more solvers

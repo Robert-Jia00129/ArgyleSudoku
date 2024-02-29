@@ -1,5 +1,6 @@
 ; benchmark generated from python API
 (set-info :status unknown)
+(set-logic QF_LIA)
 (declare-fun cell_1_1 () Int)
 (declare-fun cell_2_1 () Int)
 (declare-fun cell_3_1 () Int)

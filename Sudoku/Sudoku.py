@@ -22,13 +22,13 @@ class Sudoku:
     # Set of chars that is could be placed in a position
     _valid_charset = set([int(x) for x in range(0, 10)])
     # Type of sudoku
-    _distinct = True
     _classic = True
-    _no_num = True
+    _distinct = True
     _per_col = True
+    _no_num = True
+    _prefill = False
     _hard_smt_logPath = None
     _hard_sudoku_logPath = None
-    _prefill = False
 
     def __init__(self, sudoku_array: List[int], classic: bool, distinct: bool, per_col: bool, no_num: bool,
                  prefill: bool, seed, hard_smt_logPath="", hard_sudoku_logPath="", print_progress=False,
@@ -67,9 +67,11 @@ class Sudoku:
         self._prefill = prefill
         self._penalty = 0
         self.condition_tpl = (self._classic, self._distinct, self._per_col, self._no_num, self._prefill)
-        self._print_progress = print_progress
+        self._verbose = print_progress
         self._bool_timeout = False
         self._seed = seed
+        self._store_global = False
+        self._global_solver = z3.Solver()
         if seed == 0:
             print("WARNING: NO random seed was set for solver class. "
                   "This would cause experiments to be unreliable when compared in across constraints."
@@ -183,7 +185,10 @@ class Sudoku:
         :return: True if solvable, else False
         """
         self.load_constraints()
+        if self._store_global:
+            self._global_solver.push(self._solver.__deepcopy__())
         z3_check = self._solver.check()
+
 
         if z3_check == z3.sat:
             return True
@@ -192,7 +197,6 @@ class Sudoku:
 
     def new_solver(self):
         """
-        TODO: Could manually define which alternative solver we should use @sj
         Try checking index[i][j] == Tryval with alternative approach
         :param i:
         :param j:
@@ -209,12 +213,17 @@ class Sudoku:
 
     def check_condition(self, i, j, tryVal):
         start = time.time()
+        # @sj TODO: very unsure
+        # solvers optimize the constraints??
+        # now evaluating in reverse order, does this affect??
+        # correctly pushing the constraints?
+        # self._global_solver.push()
         res = self._solver.check(self._grid[i][j][tryVal - 1] if self._no_num else self._grid[i][j] == int(tryVal))
         end = time.time()
         if self._timeout == 0: return res
         if end - start < (self._timeout - 100) / 1000 and res == z3.unknown:
             raise 'Probably somebody hit ctrl-c, aborting'
-        elif self._print_progress and end - start > self._timeout / 10000 and res != z3.unknown:
+        elif self._verbose and end - start > self._timeout / 10000 and res != z3.unknown:
             print('One check took more than 10% of timeout, but completed')
         return res
 
@@ -239,7 +248,7 @@ class Sudoku:
             if condition == z3.unknown:
                 raise f"Timeout happened twice when checking if {i} {j} {test_num} is removable"
             else:
-                if self._print_progress:
+                if self._verbose:
                     print(f'unsolvable problem checking removable was {condition} for ({i},{j}) is {test_num}')
                 self.write_to_smt_and_sudoku_file((i, j), test_num, condition)
                 return condition != z3.sat, 1
@@ -300,7 +309,7 @@ class Sudoku:
 
                             if check == z3.unknown:
                                 raise 'Timeout happened twice, don\'t know how to continue!'
-                            elif self._print_progress:
+                            elif self._verbose:
                                 print(f'unsolvable problem was {check} for ({i},{j}) is {tryVal}')
                         else:  # check == z3.unsat
                             assert (check == z3.unsat)
@@ -316,12 +325,12 @@ class Sudoku:
                     else:
                         self._solver.add(self._grid[i][j] == tryVal)
 
-                if self._print_progress:
+                if self._verbose:
                     print(f'Finished with row {i} and filled \n {self._nums[i]}')
         else:  # not per_col
             # Start by filling the number 1,2,3...9
             for num in range(1, 10):
-                if self._print_progress:
+                if self._verbose:
                     print(f'Filling number {num}')
                 if num == 9:
                     for r in range(9):
@@ -367,7 +376,7 @@ class Sudoku:
 
                                         if check == z3.unknown:
                                             raise 'Timeout happened twice, don\'t know how to continue!'
-                                        elif self._print_progress:
+                                        elif self._verbose:
                                             print(f'unsolvable problem was {check} for ({r},{c}) is {num}')
                                         if check == z3.sat:
                                             self.add_constaint(r, c, num)
@@ -378,7 +387,7 @@ class Sudoku:
                             elif self._nums[r][c] == num:
                                 cols.remove(c)
                                 break
-        if self._print_progress:
+        if self._verbose:
             print("Generated a solved sudoku")
             print(self._nums)
         return self._nums, self._penalty
@@ -389,7 +398,7 @@ class Sudoku:
         :param file_path:
         :return:
         """
-        if self._print_progress:
+        if self._verbose:
             print(self._nums)
         with open(self._hard_smt_logPath, 'w') as f:
             s = ''.join(str(ele) for rows in self._nums for ele in rows)
@@ -626,7 +635,7 @@ def check_condition_index(sudoku_grid: list[int], condition, index: (int, int), 
     return end - start, penalty
 
 
-def generate_smt(grid: str, constraint: list, index: (int, int), try_val: int, is_sat: bool, smt_dir: str) -> str:
+def generate_smt(grid: str, constraint: list, index: (int, int), try_val: int, is_sat: bool, smt_dir: str, seed: float) -> str:
     """
     Add an additional constraint to the Sudoku problem, generate an SMT file, and return the file path.
     :param index: Tuple (row, column) of the cell for the additional constraint.
@@ -663,27 +672,17 @@ if __name__ == "__main__":
     print("Process finished")
 
 
-# rerun experiments
-    # deleted all the files, now have to
-        # find the function to run experiments
-        # run experiments
-        # plot the results again to see if the same bug occurs again
-# diagonal
 
-# timeout in one but not another sqaure grid
-    # remain the graph that is within [0,5]*[0,5]
-    # make a 2*2 table recording how many instances are in each quadrant
-
-
-# fix the diagonal bug first, if not, find which file it comes from
-# random seed to ensure the full sudoku grids and holes
-# are generated in the same way accross different constraints
-    # set a specific random seed
-    # clear all experiments,
-    # run experiemtns again
-#
-    #
 # fill when grid is almost full
     # check the time to fill the grid when it's almost full
 
 # helper to rerun experiment
+
+
+# vampire warnings, default timelimit 60s, also might be using z3 to solve the problem??
+# smtinterpol can't find the .jar file
+# yices: don't like set-info
+# bitwuzla: don't support numbers??
+
+
+# s = SolverFor("QF_LIA")

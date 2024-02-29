@@ -1,7 +1,8 @@
 import ast
 import matplotlib.pyplot as plt
 
-def plot_constraints_comparison(constraint_comparison_num, solver="ALL",file_path=''):
+
+def plot_constraints_comparison(constraint_comparison_num, solver="ALL", file_path=''):
     parsed_data = []
 
     with open(file_path, 'r') as file:
@@ -15,9 +16,9 @@ def plot_constraints_comparison(constraint_comparison_num, solver="ALL",file_pat
                 continue
 
     # Initializing dictionaries to store time values
-    times_constraint_true = {}          # Times when the specified constraint == True
-    times_constraint_false = {}         # Times when the specified constraint == False
-    combined_times_true = []   # Combined times for all solvers when the constraint is True
+    times_constraint_true = {}  # Times when the specified constraint == True
+    times_constraint_false = {}  # Times when the specified constraint == False
+    combined_times_true = []  # Combined times for all solvers when the constraint is True
     combined_times_false = []  # Combined times for all solvers when the constraint is False
 
     for entry in parsed_data:
@@ -89,5 +90,7 @@ def plot_constraints_comparison(constraint_comparison_num, solver="ALL",file_pat
 
 if __name__ == '__main__':
     time_instances_file_path = './Sudoku/hard_sudoku_instance-logFile/argyle_time.txt'
-    plot_constraints_comparison(1, file_path=time_instances_file_path)  # Compare between distinct and pbeq for all solvers
-    plot_constraints_comparison(1, solver="z3", file_path=time_instances_file_path)  # compare between distinct and pbeq, but specifically for z3
+    plot_constraints_comparison(1,
+                                file_path=time_instances_file_path)  # Compare between distinct and pbeq for all solvers
+    plot_constraints_comparison(1, solver="z3",
+                                file_path=time_instances_file_path)  # compare between distinct and pbeq, but specifically for z3

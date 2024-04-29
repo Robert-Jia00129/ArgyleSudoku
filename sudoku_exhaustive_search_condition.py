@@ -18,16 +18,6 @@ FULL_CONDITIONS = [(classic, distinct, percol, nonum, prefill)  # must be hashab
 assert isinstance(FULL_CONDITIONS[0], Hashable), "Conditions MUST be HASHABLE"
 
 
-def write_file(condition_name, arr_time):
-    file_path = condition_name + "-" + time.strftime("%Y_%m_%d_%H_%M_%S")
-    with zipfile.ZipFile(f'./{file_path}.zip', 'w') as my_zip:
-        files = os.listdir('ArgyleSudoku/Sudoku')
-        for f in files:
-            my_zip.write(f)
-        with my_zip.open(f"{condition_name}.txt", "w") as new_hello:
-            new_hello.write(bytes(f'{arr_time}', 'utf-8'))
-
-
 def to_str(bool_list) -> str:
     if len(bool_list) == 6:
         return ''.join(("classic-" if bool_list[0] else "argyle-",

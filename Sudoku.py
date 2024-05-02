@@ -819,9 +819,6 @@ if __name__ == "__main__":
     # s = Sudoku(empty_list, classic=False, distinct=True, per_col=True, no_num=False, log_path="DataCollection/")
     # s.gen_solved_sudoku()
 
-    # store_holes = np.load('solved_sudoku.npy')
-    # ret_holes_time = generate_puzzle(store_holes, True, True, False, False)
-
     # empty_list = [0 for i in range(9) for j in range(9)]
     # s = Sudoku(empty_list, classic=True, distinct=True, per_col=True, no_num=False, prefill=True, seed=1234,
     #            distinct_digits=True)
@@ -846,3 +843,5 @@ if __name__ == "__main__":
 # 66to the contraints variations
 # smt to string mapping
 # break the whole function into calling smaller functions
+
+# TODO: Give credit to sudoku author and link blog post

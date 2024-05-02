@@ -1,5 +1,5 @@
 # Argyle_Sudoku
-> This project was partly based on the code from [z3-sudoku](https://github.com/awkwardbunny/z3-sudoku)
+> This project is built on the code provided by Giuseppe Cardone in the blog post "[**Solving the Miracle Sudoku with Microsoft Z3**"](https://www.gcardone.net/2020-06-03-solving-the-miracle-sudoku-in-z3/). 
 
 This project uses python z3-solver to solve classic sudokus and argyle sudokus using various techniques. It then compares the efficiency of each method and between the sudokus. 
 

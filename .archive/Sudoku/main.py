@@ -175,7 +175,7 @@ def run_experiment_once(single_condition: bool, *args, total_time_per_condition=
                     # hard_instances_log_path='DataCollection/', store_sudoku_path='../store-sudoku/' + condition_name +
                     # '.txt')
                     holes_time, holes_penalty = Sudoku.gen_holes_sudoku(eval(sudoku_lst), *ele,
-                                                                        hard_smt_logPath='smt-logFiles/',
+                                                                        hard_smt_log_dir='smt-logFiles/',
                                                                         hard_sudoku_logPath=hard_sudoku_path,
                                                                         store_sudoku_path=holes_sudoku_path, seed=seed)
                     print(f'\tTime taken: {holes_time}')

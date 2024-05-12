@@ -1,0 +1,1 @@
+{'classic': 0, 'argyle': 30, 'seed': 40}

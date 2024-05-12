@@ -1,69 +1,40 @@
 # Argyle_Sudoku
 > This project is built on the code provided by Giuseppe Cardone in the blog post "[**Solving the Miracle Sudoku with Microsoft Z3**"](https://www.gcardone.net/2020-06-03-solving-the-miracle-sudoku-in-z3/). 
 
-This project uses python z3-solver to solve classic sudokus and argyle sudokus using various techniques. It then compares the efficiency of each method and between the sudokus. 
+This project demonstrate how one can utilize the `jz3` package to solve classic sudokus and argyle sudokus with various encoding 
+techniques, and then compare the efficiency of each method and between the sudokus. 
 
-## File descriptions: 
-`main.py`: This file contains the main function. It takes in a sudoku file and solves it using the methods in sudoku.py. It then prints/ the solution and the time taken to solve it.
 
-`Sudoku.py`: Contains all functionalities of building sudoku with various constraints, logging sudoku instances to files in string format and smt format, 
 
-`currline.txt`: stores the which line of the full sudokus file should the solver generating sudoku holes start loading from and solving when calling `run_experiment`
+In `Sudoku.py` both traditional implementation of adding conditional constraints using if-else
+statements and our approach of adding conditional constraints using our custom solver is presented. 
+An example of two different ways of querying if an index can be set to a number is presented.
 
-`hard_sudoku_instance-logFile/`: Contains the hard sudoku instances in string format. 
 
-`smt-logFiles/`: Contains the smt files for sudokus 
+## Directory Structure
+- `/analysis`: Includes visualizations scripts and images generated using `jz3`
 
-`hard-smt-logFiles/`: Contains the hard suodoku instances in smt format. 
+- `/problem_instances`: 
+  - `/particular_hard_instances_records`: Particular hard **instances** identified during the generation process, in txt and SMT format
+  - `/whole_problem_records`: **Whole** sudoku problems in txt and SMT format
+  - Details of recording format explained [here](sudoku_experiment_demo/problems_instances/README.md)
 
-`time-record/`: Cntains the time taken to solve/generate each sudoku
 
-### hard_sudoku_instance-logFile
-`argyle_instance.txt`: contains hard argyle sudoku instances that are hard if build with certain restrictions
 
-`argyle_time.txt`: records the time for different solvers to solve a particular argyle sudoku instance built with different constrains
 
-`classic_instance.txt`: same as `argyle_instance.txt` but for classic instances
+- `/src`: Contains source code for core functionalities. 
+  - `/Sudoku.py`: Contains all functionalities of building sudoku with various constraints, logging sudoku instances to files in string format and smt format. 
+  - `/run_sudoku_experiment.py`: This file contains the main function. It takes in a sudoku file and solves it using the methods in sudoku.py. It then prints/ the solution and the time taken to solve it.
 
-`classic_time.txt`: same as `argyle_time.txt` but records time for solvers to solve classic instances
+- `./sudoku_database/`: Stores the already generated full and holes sudokus
+  - `currline.txt`: stores the which line of the full sudokus file should the solver generating sudoku holes start loading from and solving when calling `run_experiment`
 
-`curr_instance_line.txt`: record how many lines for instances have been read. So the time file can know where to read from next 
 
-**Explaination for file structure of `argyle/classic_time.txt`**: 
+- `./time_records/`: Direct directory for storing time records from solver runs, highlighting the performance of different solvers.
+  - Details of time recording format is presented [here](./time-record/README.md)
 
-Each line of the file is a string version of a dictionary described as follows: 
-explaination of the file structure:
-```python
-time = 5.0
-did_time_out = True
-tgrid = "1231321093102930129..."
-tindex = (1,2)
-ttry_Val = 5
-tis_sat = "sat"
 
-dict = dict(
-"problem":{
-    "grid": tgrid, # string
-    "index": tindex, # (int, int)
-    "try_Val": ttry_Val, # int
-    "is_sat": tis_sat # bool
-},
-constraint1:{ 
-# e.g. (True,True,True,True,True)
-    "smt_path": "/path/to/smt_file_1.smt",
-    "z3": (time, did_time_out "answer sat unsat timeout"),
-    "cvc5": (time, did_time_out),
-    ...
-    "other_solver": (time, did_time_out)
-},
-constraint2:{
-# e.g. (True,False,True,True,True)
-    "smt_path": "/path/to/smt_file_1.smt",
-    "z3": (time, did_time_out "answer sat unsat timeout"),
-    "cvc5": (time, did_time_out),
-    ...
-    "other_solver": (time, did_time_out)
-},
-... # other constraints
-)
-```
+
+ The workflow is depicted in the following picture: 
+
+![workflow](./docs/images/workflow.jpg)

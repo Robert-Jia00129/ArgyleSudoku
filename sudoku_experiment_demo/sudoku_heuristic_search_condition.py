@@ -5,7 +5,7 @@ import zipfile
 from pathlib import Path
 from typing import List, Hashable
 
-from jz3.src.Sudokus import Sudoku
+from Sudoku import *
 
 FULL_CONDITIONS = [(classic, distinct, percol, nonum, prefill)  # must be hashable
                    for classic in (True, False)

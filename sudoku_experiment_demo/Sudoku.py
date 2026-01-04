@@ -4,7 +4,6 @@ import os.path
 import warnings
 
 # import src.SMTs.SMTs as z3  # if this fails, run 'python -m pip install z3-solver'
-# import src.SMTs.SMTs as z3
 import jz3 as z3
 import numpy as np
 import random
@@ -727,9 +726,9 @@ def append_list_to_file(file_path, lst: list[int]):
 
 
 def gen_full_sudoku(*constraints, seed, hard_smt_logPath='smt2_files/', store_sudoku_path="",
-                    hard_sudoku_logPath="") -> (
-        float, int):
+                    hard_sudoku_logPath="") -> (float, int, List[List[int]]):
     """
+    setup empty grid. Call Sudoku.gen_full_sudoku().
     append generated full sudoku to the designated path as a string
     
     :param hard_smt_log_path:
@@ -745,7 +744,7 @@ def gen_full_sudoku(*constraints, seed, hard_smt_logPath='smt2_files/', store_su
     et = time.time()
     # Write to file
     append_list_to_file(store_sudoku_path, sum(nums, []))  # flatten 2D nums into 1D
-    return et - st, penalty
+    return et - st, penalty, nums
 
 
 def gen_holes_sudoku(solved_sudoku: list[int], *constraints, seed, hard_smt_log_dir='smt2_files/', store_sudoku_path="",

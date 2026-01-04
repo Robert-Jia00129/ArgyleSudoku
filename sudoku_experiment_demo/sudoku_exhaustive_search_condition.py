@@ -5,15 +5,20 @@ import time
 import zipfile
 from pathlib import Path
 from typing import List, Hashable
+from dotenv import load_dotenv
+load_dotenv()
 
 from jz3.src.run_solvers import run_solvers
-import Sudoku
+import sudoku_experiment_demo.Sudoku as Sudoku
+
+def get_seed_from_env():
+    return os.getenv("FIX_SEED")
 
 FULL_CONDITIONS = [(classic, distinct, percol, nonum, prefill)  # must be hashable
                    for classic in (True, False)
                    for distinct in (True, False)
                    for percol in (True, False)
-                   for nonum in (True, False) if not (distinct and nonum)
+                   for nonum in (True, False) if not (distinct and nonum) # distinct and nonum cannot be both true
                    for prefill in (True, False)]
 assert isinstance(FULL_CONDITIONS[0], Hashable), "Conditions MUST be HASHABLE"
 
@@ -105,10 +110,8 @@ def run_experiment_once(single_condition: bool, *args,
     try:
         with open(curr_line_path, 'r') as f:
             curr_line = eval(f.readline()) # Keep track of which full sudoku to continue_reading with
-    except IOError:
-        curr_line = {}  # avoid file does not exist error
-    except SyntaxError:
-        curr_line = {}  # avoid empty file with no content
+    except Exception as e:
+        print(e)
 
     if single_condition:
         conditions = [start_condition]
@@ -117,7 +120,7 @@ def run_experiment_once(single_condition: bool, *args,
         if start_condition:
             conditions = conditions[conditions.index(tuple(start_condition)) + start_from_next:]
 
-    seed = time.time()
+    seed = get_seed_from_env() or time.time()
     print(f'Generating full sudokus: \n'
           f'{"-" * len(conditions)}Total Conditions: {len(conditions)}')
     for condition in conditions:
@@ -131,7 +134,7 @@ def run_experiment_once(single_condition: bool, *args,
         condition_name = to_str(condition) + 'full_time'
         print('-', end="")
 
-        full_time, full_penalty = Sudoku.gen_full_sudoku(*condition, hard_smt_logPath=hard_smt_log_dir,
+        full_time, full_penalty, _ = Sudoku.gen_full_sudoku(*condition, hard_smt_logPath=hard_smt_log_dir,
                                                          hard_sudoku_logPath=hard_sudoku_path,
                                                          store_sudoku_path=full_sudoku_path, seed=seed)
         os.makedirs(time_record_dir, exist_ok=True)
@@ -375,7 +378,7 @@ if __name__ == '__main__':
     start_time = time.time()
     TIME_OUT = 5
 
-    # run_experiment(12*1)  # about 5 minutes per experiment
-    load_and_alternative_solve_hard(2*5) # about 30-60 seconds per instance
+    run_experiment(12*1)  # about 5 minutes per experiment
+    # load_and_alternative_solve_hard(2*5) # about 30-60 seconds per instance
     end_time = time.time()
     print(f"Process Complete. Total time taken: {end_time-start_time}")

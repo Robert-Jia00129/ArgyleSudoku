@@ -136,7 +136,7 @@ def parse_particular_hard_instance(
     file_directory: str, sql_db_directory: str, new: bool = True
 ) -> None:
     # read and parse from file to python obj
-    attempts_datas: list[dict] = []
+    attempts_datas: list[dict[str, Any]] = []
     with open(file_directory, "r") as f:
         txt = f.read()
         times = txt.split("\n")
@@ -144,54 +144,54 @@ def parse_particular_hard_instance(
             # parse the dict
             if t == "":
                 continue
-            d: dict = eval(t)
+            d: dict[str, Any] = eval(t)
+            print(f"{d["problem"]["grid"]=}")
+            print(f"{type(d["problem"]["grid"])=}")
             attempts_datas.append(d)
 
+    table = GenericDB(
+        sql_db_directory,
+        "particular_hard_instances",
+        {
+            "instance_id": "INT",
+            "grid": "TEXT",
+            "idx": "STRING",
+            "try_Val": "INT",
+            "assert_equals": "BOOL",
+            "is_sat": "STRING",
+            "is_classic": "BOOL",
+            "is_distinct": "BOOL",
+            "is_per_col": "BOOL",
+            "is_no_num": "BOOL",
+            "is_prefill": "BOOL",
+            "cvc5_time": "FLOAT",
+            "cvc5_is_timeout": "BOOL",
+            "cvc5_state": "STRING",
+            "z3_time": "FLOAT",
+            "z3_is_timeout": "BOOL",
+            "z3_state": "STRING",
+        },
+        id_column=True,
+        new=True,
+    )
+
     for idx, att in enumerate(attempts_datas):
-        # problem data
-        table_problem_data = GenericDB(
-            sql_db_directory,
-            f"instance{idx}_problem_data",
-            {
-                "grid": "STRING",
-                "idx": "STRING",
-                "try_Val": "INT",
-                "assert_equals": "BOOL",
-                "is_sat": "STRING",
-            },
-            id_column=True,
-            new=True,
-        )
-        table_problem_data.add_entry(
-            grid=att["problem"]["grid"],
-            idx=str(att["problem"]["index"])[1:-1],  # [3, 6] -> '3, 6'
-            try_Val=att["problem"]["try_Val"],
-            assert_equals=att["problem"]["assert_equals"],
-            is_sat=att["problem"]["is_sat"],
-        )
-        # attempts
-        table_problem_data = GenericDB(
-            sql_db_directory,
-            f"instance{idx}_attempts_data",
-            {
-                "config": "STRING",
-                "cvc5_time": "FLOAT",
-                "cvc5_is_timeout": "BOOL",
-                "cvc5_state": "STRING",
-                "z3_time": "FLOAT",
-                "z3_is_timeout": "BOOL",
-                "z3_state": "STRING",
-            },
-            id_column=True,
-            new=True,
-        )
         for key in att.keys():
             if isinstance(key, str):
                 continue
-            table_problem_data.add_entry(
-                config="".join(
-                    map(lambda x: str(int(x)), key)
-                ),  # (False, True, ...) -> '01...'
+            # print(att["problem"]["grid"])
+            table.add_entry(
+                instance_id=idx,
+                grid=att["problem"]["grid"],
+                idx=str(att["problem"]["index"])[1:-1],  # [3, 6] -> '3, 6'
+                try_Val=att["problem"]["try_Val"],
+                assert_equals=att["problem"]["assert_equals"],
+                is_sat=att["problem"]["is_sat"],
+                is_classic=int(key[0]),
+                is_distinct=int(key[1]),
+                is_per_col=int(key[2]),
+                is_no_num=int(key[3]),
+                is_prefill=int(key[4]),
                 cvc5_time=att[key]["cvc5"][0],
                 cvc5_is_timeout=att[key]["cvc5"][1],
                 cvc5_state=att[key]["cvc5"][2],

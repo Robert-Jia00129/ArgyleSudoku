@@ -5,6 +5,7 @@ import time
 import zipfile
 from pathlib import Path
 from typing import List, Hashable
+import sqlite3 as sql
 
 from jz3.src.run_solvers import run_solvers
 import Sudoku
@@ -134,6 +135,40 @@ def run_experiment_once(single_condition: bool, *args,
         full_time, full_penalty = Sudoku.gen_full_sudoku(*condition, hard_smt_logPath=hard_smt_log_dir,
                                                          hard_sudoku_logPath=hard_sudoku_path,
                                                          store_sudoku_path=full_sudoku_path, seed=seed)
+        # NOTE: not tested yet
+        # sql db time log
+        db_name = "example"
+        db_dir = os.path.join(time_record_dir, condition_name + '.db')
+        table_name = "example"
+        cols = ["time_taken FLOAT",
+                "timeout_count INTEGER",]
+        cols_str = ", ".join(cols)
+
+        conn = sql.connect(db_dir)
+        cur = conn.cursor()
+
+        cur.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({cols_str});")
+        # try:
+        #     cur.execute(f"CREATE TABLE {table_name} ({cols});")
+        # except sql.OperationalError as e:
+        #     # assume that this is because the table already exists
+        #     # TODO: move creating the table to the beginning, this is only for a quick test
+            # ...
+
+        cols = cols[1:] # remove the key col; sql will auto generate it
+        cols = list(map(lambda x: x[:x.index(" ")], cols))
+        cols_str = ', '.join(cols)
+
+        placeholders = ', '.join(['?'] * 2)
+        cur.execute(
+            f"INSERT INTO {table_name} ({cols_str}) VALUES ({placeholders})",
+            [full_time, full_penalty]
+        )
+
+        conn.commit()
+        conn.close()
+
+        # txt file timelog
         os.makedirs(time_record_dir, exist_ok=True)
         with open(os.path.join(time_record_dir, condition_name + '.txt'), 'a') as f:
             f.write(f'{full_time},{full_penalty}\n')
@@ -175,6 +210,41 @@ def run_experiment_once(single_condition: bool, *args,
                                                             store_sudoku_path=holes_sudoku_path, seed=seed)
         if verbose:
             print(f'\tTime taken: {holes_time}')
+
+        # NOTE: not tested yet
+        # sql db time log
+        db_name = "example"
+        db_dir = os.path.join(time_record_dir, condition_name + '.db')
+        table_name = "example"
+        cols = ["time_taken FLOAT",
+                "timeout_count INTEGER",]
+        cols_str = ", ".join(cols)
+
+        conn = sql.connect(db_dir)
+        cur = conn.cursor()
+
+        cur.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({cols_str});")
+        # try:
+        #     cur.execute(f"CREATE TABLE {table_name} ({cols});")
+        # except sql.OperationalError as e:
+        #     # assume that this is because the table already exists
+        #     # TODO: move creating the table to the beginning, this is only for a quick test
+            # ...
+
+        cols = cols[1:] # remove the key col; sql will auto generate it
+        cols = list(map(lambda x: x[:x.index(" ")], cols))
+        cols_str = ', '.join(cols)
+
+        placeholders = ', '.join(['?'] * 2)
+        cur.execute(
+            f"INSERT INTO {table_name} ({cols_str}) VALUES ({placeholders})",
+            [holes_time, holes_penalty]
+        )
+
+        conn.commit()
+        conn.close()
+
+        # txt file timelog
         with open(os.path.join(time_record_dir, condition_name + '.txt'), 'a+') as f_holes:
             f_holes.write(f'{holes_time},{holes_penalty}\n')
 
@@ -233,7 +303,7 @@ def load_and_alternative_solve_hard_once(hard_instances_txt_log_dir: str, is_cla
         for _ in range(curr_line_num):
             fr.readline()
 
-        for _ in range(num_iter):
+        for index in range(num_iter):
             line_to_solve = fr.readline()
             if line_to_solve == '\n':
                 print("Encountered an empty new line, skipping the empty line")
@@ -277,6 +347,78 @@ def load_and_alternative_solve_hard_once(hard_instances_txt_log_dir: str, is_cla
                     single_condition_smt_path = store_result_dict["smt_path"]
 
                 store_result_dict[CorAcondition] = run_solvers(smt2_file=single_condition_smt_path, time_out=timeout)
+
+
+            # sql db time record file
+            if is_classic:
+                db_dir = os.path.join(time_record_dir,"classic_time.db")
+            else:
+                db_dir = os.path.join(time_record_dir,"argyle_time.db")
+            table_name = "example"
+            cols = ["ID INTEGER PRIMARY KEY",
+                    #
+                    "problem_instance INTEGER",
+                    "problem_grid TEXT",
+                    "problem_index TEXT",
+                    "problem_tryval INTEGER",
+                    "problem_assert_equals BOOL",
+                    "problem_is_sat TEXT",
+                    #
+                    "cond_is_classic BOOL",
+                    "cond_is_distinct BOOL",
+                    "cond_is_per_col BOOL",
+                    "cond_is_no_num BOOL",
+                    "cond_is_profill BOOL",
+                    #
+                    # "res_time_cvc5 FLOAT",
+                    # "res_timeout_cvc5 BOOL",
+                    "res_time_z3 FLOAT",
+                    "res_timeout_z3 BOOL",
+                    ]
+            cols_str = ", ".join(cols)
+
+            conn = sql.connect(db_dir)
+            cur = conn.cursor()
+
+            cur.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({cols_str});")
+            # try:
+            #     cur.execute(f"CREATE TABLE {table_name} ({cols});")
+            # except sql.OperationalError as e:
+            #     # assume that this is because the table already exists
+            #     # TODO: move creating the table to the beginning, this is only for a quick test
+                # ...
+
+            cols = cols[1:] # remove the key col; sql will auto generate it
+            cols = list(map(lambda x: x[:x.index(" ")], cols))
+            cols_str = ', '.join(cols)
+
+            for key in store_result_dict.keys():
+                if isinstance(key, str):
+                    continue
+                print(store_result_dict)
+                vals = (
+                    index,
+                    store_result_dict["problem"]["grid"],
+                    str(store_result_dict["problem"]["index"])[1:-1],
+                    store_result_dict["problem"]['try_Val'],
+                    store_result_dict["problem"]["assert_equals"],
+                    store_result_dict["problem"]["is_sat"],
+                    key[0],
+                    key[1],
+                    key[2],
+                    key[3],
+                    key[4],
+                    store_result_dict[key]['z3'][0],
+                    store_result_dict[key]['z3'][1],
+                )
+                placeholders = ', '.join(['?'] * len(vals))
+                cur.execute(
+                    f"INSERT INTO {table_name} ({cols_str}) VALUES ({placeholders})",
+                    vals
+                )
+
+            conn.commit()
+            conn.close()
 
             # write time dictionary to the time record file
             os.makedirs(time_record_dir, exist_ok=True)
@@ -324,6 +466,78 @@ def record_whole_problem_performance(num_iter: int=1,
 
                 # launch multiple solvesr and record to dict
                 store_result_dict[single_condition] = run_solvers(smt2_file=single_condition_smt_path,time_out=timeout)
+
+                # sql timelog
+
+                # sql db time record file
+                db_dir = os.path.join(time_record_whole_problem_dir,"time.db")
+                table_name = "example"
+                cols = ["ID INTEGER PRIMARY KEY",
+                        #
+                        "problem_instance INTEGER",
+                        "problem_grid TEXT",
+                        "problem_index TEXT",
+                        "problem_tryval INTEGER",
+                        "problem_assert_equals BOOL",
+                        "problem_is_sat TEXT",
+                        #
+                        "cond_is_classic BOOL",
+                        "cond_is_distinct BOOL",
+                        "cond_is_per_col BOOL",
+                        "cond_is_no_num BOOL",
+                        "cond_is_profill BOOL",
+                        #
+                        # "res_time_cvc5 FLOAT",
+                        # "res_timeout_cvc5 BOOL",
+                        "res_time_z3 FLOAT",
+                        "res_timeout_z3 BOOL",
+                        ]
+                cols_str = ", ".join(cols)
+
+                conn = sql.connect(db_dir)
+                cur = conn.cursor()
+
+                cur.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({cols_str});")
+                # try:
+                #     cur.execute(f"CREATE TABLE {table_name} ({cols});")
+                # except sql.OperationalError as e:
+                #     # assume that this is because the table already exists
+                #     # TODO: move creating the table to the beginning, this is only for a quick test
+                    # ...
+
+                cols = cols[1:] # remove the key col; sql will auto generate it
+                cols = list(map(lambda x: x[:x.index(" ")], cols))
+                cols_str = ', '.join(cols)
+
+                for key in store_result_dict.keys():
+                    if isinstance(key, str):
+                        continue
+                    print(store_result_dict)
+                    vals = (
+                        asdf,
+                        store_result_dict["problem"]["grid"],
+                        str(store_result_dict["problem"]["index"])[1:-1],
+                        store_result_dict["problem"]['try_Val'],
+                        store_result_dict["problem"]["assert_equals"],
+                        store_result_dict["problem"]["is_sat"],
+                        key[0],
+                        key[1],
+                        key[2],
+                        key[3],
+                        key[4],
+                        store_result_dict[key]['z3'][0],
+                        store_result_dict[key]['z3'][1],
+                    )
+                    placeholders = ', '.join(['?'] * len(vals))
+                    cur.execute(
+                        f"INSERT INTO {table_name} ({cols_str}) VALUES ({placeholders})",
+                        vals
+                    )
+
+                conn.commit()
+                conn.close()
+
+                # txt time log
                 with open(store_time_comparison_path, 'a+') as fw:
                     fw.write(str(store_result_dict) + '\n')
     # TODO: @sj Cannot implement this for holes

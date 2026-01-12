@@ -9,7 +9,7 @@ import numpy as np
 import random
 from copy import deepcopy
 import time
-from typing import List
+from typing import *
 from pathlib import Path
 from jz3.src.z3_wrapper import Solver
 
@@ -121,121 +121,6 @@ class Sudoku:
                     x)
                 if x != 0:
                     self._nums[r][c] = int(x)
-    
-    # def load_constraints(self):
-    #     cells = [self._grid[r][c] for c in range(9) for r in range(9)]  # each grid cell
-    #     rows = [self._grid[r] for r in range(9)]  # row 1-9
-    #     cols = [[self._grid[r][c] for r in range(9)] for c in range(9)]  # col 1-9
-    #     offset = list(itertools.product(range(0, 3), range(0, 3)))  # box 1st -9th
-    #     boxes = []
-    #     self._solver.start_recording()
-    #     # Load existing numbers
-    #     for r in range(9):
-    #         for c in range(9):
-    #             if self._nums[r][c] != 0:
-    #                 if self._heuristic_search_mode:
-    #                     self._heuristic_solver.add_conditional_constraint(self._grid[r][c] == self._nums[r][c])
-    #                 if self._no_num:
-    #                     self._solver.add(self._grid[r][c][self._nums[r][c] - 1])
-    #                 elif self._distinctdigits:
-    #                     self._solver.add(self._grid[r][c] == self._constants[self._nums[r][c] - 1])
-    #                     # , conditional = not (self._no_num) & & self._distinctdigits
-    #                 else:  # 1-9 number
-    #                     self._solver.add(self._grid[r][c] == int(self._nums[r][c]))
-    #
-    #     for r in range(0, 9, 3):
-    #         for c in range(0, 9, 3):
-    #             boxes.append([self._grid[r + dy][c + dx] for dy, dx in offset])
-    #
-    #     if self._no_num:
-    #         # pbeq ONLY, no_num 3D grid
-    #         # [self._heuristic_solver.add(z3.PbEq([(self._grid[i][j][k], 1) for k in range(9)], 1),const("no_num")==True)
-    #         #  for i in range(9) for j in range(9)]  # digit
-    #         [self._solver.add(z3.PbEq([(self._grid[i][j][k], 1) for k in range(9)], 1))
-    #          for i in range(9) for j in range(9)]  # digit
-    #         [self._solver.add(z3.PbEq([(self._grid[k][i][j], 1) for k in range(9)], 1))
-    #          for i in range(9) for j in range(9)]  # Col distinct
-    #         [self._solver.add(z3.PbEq([(self._grid[j][k][i], 1) for k in range(9)], 1))
-    #          for i in range(9) for j in range(9)]  # Row distinct
-    #         [self._solver.add(z3.PbEq([(box[k][j], 1) for k in range(9)], 1))
-    #          for j in range(9) for box in boxes]  # box
-    #     else:  # numbers  2D grid
-    #         # Restrict cells in between 1-9
-    #         for cell in cells:
-    #             # TODO another way of constraints that we can add, wouldn't expect to have too much of an impact though
-    #             # if self._distinctdigits:
-    #             #     self._solver.add(self._solver.Or(digit == 1, digit == 2)...)
-    #             # else:
-    #             self._solver.add(z3.Or([cell == c for c in self._constants]))
-    #             # self._solver.add(digit >= 1) # ==1 ==2 ==3 ==4 ....
-    #             # self._solver.add(digit <= 9)  # Digit
-    #         if self._distinct:  # distinct, numbers 2D grid
-    #             [self._solver.add(z3.Distinct(row)) for row in rows]  # rows
-    #             [self._solver.add(z3.Distinct(row)) for row in cols]  # cols
-    #             [self._solver.add(z3.Distinct(row)) for row in boxes]  # boxes
-    #         else:  # pbeq, numbers, 2D grid
-    #             [self._solver.add(z3.PbEq([(row[i] == k, 1) for i in range(9)], 1))
-    #              for k in range(1, 10) for row in rows]
-    #             [self._solver.add(z3.PbEq([(col[i] == k, 1) for i in range(9)], 1))
-    #              for k in range(1, 10) for col in cols]
-    #             [self._solver.add(z3.PbEq([(box[i] == k, 1) for i in range(9)], 1))
-    #              for k in range(1, 10) for box in boxes]
-    #         if self._heuristic_search_mode and not self._distinctdigits:
-    #             # add constraints to the heuristic solver
-    #             for cell in cells:
-    #                 self._heuristic_solver.add(z3.Or([cell == c for c in self._constants]))
-    #
-    #             for row in rows:
-    #                 self._heuristic_solver.add_conditional_constraint(z3.Distinct(row), condition=self._condition_var_distinct)
-    #                 for num in range(1, 10):
-    #                     self._heuristic_solver.add_conditional_constraint(
-    #                         z3.PbEq([(cell == num, 1) for cell in row], 1),
-    #                         condition=self._condition_var_pbeq)
-    #             for col in cols:
-    #                 self._heuristic_solver.add_conditional_constraint(z3.Distinct(col), condition=self._condition_var_distinct)
-    #                 for num in range(1, 10):
-    #                     self._heuristic_solver.add_conditional_constraint(
-    #                         z3.PbEq([(cell == num, 1) for cell in col], 1),
-    #                         condition=self._condition_var_pbeq)
-    #
-    #             for box in boxes:
-    #                 self._heuristic_solver.add_conditional_constraint(z3.Distinct(box), condition=self._condition_var_distinct)
-    #                 for num in range(1, 10):
-    #                     self._heuristic_solver.add_conditional_constraint(
-    #                         z3.PbEq([(cell == num, 1) for cell in box], 1),
-    #                         condition=self._condition_var_pbeq)
-    #
-    #
-    #
-    #     # Argyle-----
-    #     if not self._classic:
-    #         argyle_hints = [[self._grid[r][r + 4] for r in range(4)]  # Major diagonal 1
-    #             , [self._grid[r][r + 1] for r in range(8)]
-    #             , [self._grid[r + 1][r] for r in range(8)]
-    #             , [self._grid[r + 4][r] for r in range(4)]
-    #             , [self._grid[r][-r - 5] for r in range(4)]
-    #             , [self._grid[r][-r - 2] for r in range(8)]
-    #             , [self._grid[r + 1][-r - 1] for r in range(8)]
-    #             , [self._grid[r + 4][-r - 1] for r in range(4)]
-    #                         ]
-    #         if self._no_num:
-    #             self._solver.add(
-    #                 z3.And([z3.PbLe([(digit[k], 1) for digit in arg], 1) for arg in argyle_hints for k in range(9)]))
-    #             pass
-    #         else:
-    #             if self._distinct:
-    #                 self._solver.add(z3.And([z3.Distinct(arg) for arg in argyle_hints]))
-    #             else:
-    #                 self._solver.add(z3.And(
-    #                     [z3.PbLe([(digit == k, 1) for digit in arg], 1) for arg in argyle_hints for k in range(9)]))
-    #             if self._heuristic_search_mode:
-    #                 for arg in argyle_hints:
-    #                     self._heuristic_solver.add_conditional_constraint(z3.Distinct(arg), condition=self._condition_var_distinct)
-    #                     for num in range(1, 10):
-    #                         self._heuristic_solver.add_conditional_constraint(
-    #                             z3.PbEq([(cell == num, 1) for cell in arg], 1),
-    #                             condition=self._condition_var_pbeq)
-    #     self._solver.start_recording()
     
     def load_constraints(self):
         digits = [self._grid[r][c] for c in range(9) for r in range(9)]  # digit
@@ -721,6 +606,8 @@ def gen_solve_sudoku(classic: bool, distinct: bool, per_col: bool, no_num: bool,
 
 
 def append_list_to_file(file_path, lst: list[int]):
+    if not file_path:
+        return
     par_dir = Path(file_path).parent
     if not os.path.exists(par_dir):
         os.makedirs(par_dir)
@@ -729,7 +616,7 @@ def append_list_to_file(file_path, lst: list[int]):
 
 
 def gen_full_sudoku(*constraints, seed, hard_smt_logPath='smt2_files/', store_sudoku_path="",
-                    hard_sudoku_logPath="") -> (float, int, List[List[int]]):
+                    hard_sudoku_logPath="") -> Tuple[float, int, List[List[int]]]:
     """
     setup empty grid. Call Sudoku.gen_full_sudoku().
     append generated full sudoku to the designated path as a string
@@ -737,7 +624,7 @@ def gen_full_sudoku(*constraints, seed, hard_smt_logPath='smt2_files/', store_su
     :param hard_smt_log_path:
     :param constraints: classic, distinct, percol, no_num, prefill
     :param store_sudoku_path:
-    :return: (time, penalty)
+    :return: (time, penalty, sudoku_grid)
     """
     empty_list = [0 for i in range(9) for j in range(9)]
     st = time.time()
@@ -752,6 +639,7 @@ def gen_full_sudoku(*constraints, seed, hard_smt_logPath='smt2_files/', store_su
 
 def gen_holes_sudoku(solved_sudoku: list[int], *constraints, seed, hard_smt_log_dir='smt2_files/', store_sudoku_path="",
                      hard_sudoku_logPath="", verbose=False):
+    # TODO: Code dupication
     """
     Reads sudokus as a string from store_sudoku_path
     :param solved_sudoku: 1D list of an already solved sudoku grid
@@ -787,13 +675,6 @@ def gen_holes_sudoku(solved_sudoku: list[int], *constraints, seed, hard_smt_log_
 def check_condition_index(sudoku_grid: list[int], condition, index: (int, int), try_val: int, is_sat: str,
                           seed: float) -> (int, int):
     """
-
-    :param sudoku_grid:
-    :param condition:
-    :param index:
-    :param try_val:
-    :param is_sat:
-    :return: (time,penalty)
     """
     s = Sudoku(sudoku_grid, *condition, seed=seed)
     s.load_constraints()
@@ -898,18 +779,18 @@ def load_grid_and_check() -> None:
 if __name__ == "__main__":
     # Test classic case
     # classic, distinct, per_col, no_num
-    condition = (False, True, True, False, True)
+    condition = (True, True, True, False, True)
     kwargs = {
         # 'num_iter': 100,
-        'log_path': 'tmp/',
+        # 'log_path': 'tmp/',
         'seed': 42,
     }
-    gen_full_sudoku(*condition, **kwargs)
+    print(gen_full_sudoku(*condition, **kwargs))
     
-    # pure_constraints(classic=True, distinct=False, per_col=True, no_num=False, prefill=True, num_iter=2,seed=4321)
-    print(gen_solve_sudoku(*condition, **kwargs, num_iter=5))
-    
-    # sudoku_conditional_constraints_test()
-    load_grid_and_check()
+    # # pure_constraints(classic=True, distinct=False, per_col=True, no_num=False, prefill=True, num_iter=2,seed=4321)
+    # print(gen_solve_sudoku(*condition, **kwargs, num_iter=5))
+    #
+    # # sudoku_conditional_constraints_test()
+    # load_grid_and_check()
     
     print("Process finished")
